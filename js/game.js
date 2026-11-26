@@ -1,4 +1,4 @@
-/* Cinco Noches en Puty's — juego de terror 3D (Three.js) */
+/* Noches en el Museo de Cera — juego de terror 3D (Three.js) */
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
@@ -48,13 +48,13 @@ function canvasTex(w, h, draw, rep) {
   return t;
 }
 const floorTex = canvasTex(128, 128, (g, w, h) => {
-  g.fillStyle = '#d9d2c3'; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#1b1b22'; g.fillRect(0, 0, w / 2, h / 2); g.fillRect(w / 2, h / 2, w / 2, h / 2);
+  g.fillStyle = '#b8b09c'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#121216'; g.fillRect(0, 0, w / 2, h / 2); g.fillRect(w / 2, h / 2, w / 2, h / 2);
   for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .08})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 }, [16, 14]);
 const wallTexBase = canvasTex(128, 128, (g, w, h) => {
-  g.fillStyle = '#4a3a66'; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#3a2c52'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 16, h);
+  g.fillStyle = '#4a1219'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#34101a'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 16, h);
   g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, h * .78, w, h * .22);
   for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .1})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); }
 });
@@ -150,50 +150,55 @@ wall(-9.5, -6, -6.2, -6); wall(-9.5, -6, -9.5, -2); wall(-9.5, -2, -6.2, -2);
 // Cove pirata x[-12,-7] z[-18,-11]
 wall(-12, -18, -7, -18); wall(-12, -18, -12, -11); wall(-12, -11, -7, -11);
 
-// Escenario
-const stageMat = lam(0x3a2a1d);
-box(9, 0.5, 3, 0, 0.25, -16.5, stageMat);
-box(9.2, 0.08, 3.2, 0, 0.52, -16.5, lam(0x5a3d26));
-[-1, 1].forEach(s => { box(1.6, 3, 0.15, s * 3.7, 1.5, -17.8, lam(0x8c1020)); });
-box(5.6, 3, 0.1, 0, 1.5, -17.88, lam(0x241a30));
-poster(bannerTex("¡PUTY'S PIZZA!"), 5.4, 0.95, 0, 2.7, -17.8, 0);
+// Salón del Trono (tarima)
+const woodMat = lam(0x2e1f17);
+box(9, 0.5, 3, 0, 0.25, -16.5, woodMat);
+box(9.2, 0.08, 3.2, 0, 0.52, -16.5, lam(0x4a2a24));
+[-1, 1].forEach(s => { box(1.6, 3, 0.15, s * 3.7, 1.5, -17.8, lam(0x6a0f1c)); });
+box(5.6, 3, 0.1, 0, 1.5, -17.88, lam(0x1a1018));
+poster(bannerTex('MUSEO DE CERA'), 5.4, 0.95, 0, 2.7, -17.8, 0);
+// Trono
+box(1.0, 0.25, 0.9, 0, 0.9, -17.2, lam(0x5a1020)); box(1.0, 1.6, 0.15, 0, 1.6, -17.65, lam(0x3a0a14));
+box(0.12, 0.7, 0.9, -0.55, 1.1, -17.2, lam(0x2a1a10)); box(0.12, 0.7, 0.9, 0.55, 1.1, -17.2, lam(0x2a1a10));
 
-// Mesas del comedor
-function table(x, z, c) {
-  cyl(0.9, 0.9, 0.08, x, 0.78, z, lam(c));
-  cyl(0.1, 0.1, 0.78, x, 0.39, z, lam(0x888888));
-  cyl(0.45, 0.45, 0.05, x, 0.04, z, lam(0x888888));
-  for (let i = 0; i < 3; i++) {
-    const a = i * 2.1 + x;
-    const h = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), lam([0xff4477, 0x44ccff, 0xffdd33][i]));
-    h.position.set(x + Math.cos(a) * 0.5, 0.96, z + Math.sin(a) * 0.5); scene.add(h);
-  }
+// Vitrinas con pedestal (sala principal)
+const glassMat = new THREE.MeshLambertMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.14, depthWrite: false });
+function vitrine(x, z, h) {
+  box(1.2, 0.9, 1.2, x, 0.45, z, lam(0x2a2220));
+  box(1.3, 0.08, 1.3, x, 0.92, z, lam(0x4a3a30));
+  box(1.1, h, 1.1, x, 0.96 + h / 2, z, glassMat);
+  cyl(0.12, 0.14, 0.5, x, 1.2, z, lam(0xcdbf98));            // busto de cera
+  sph(0.2, x, 1.62, z, lam(0xd9caa2, { emissive: 0x17110a }));
 }
-[[-4, -13.5, 0x3a6ea5], [4, -13.5, 0xa5453a], [-1.6, -11.4, 0x5aa56a], [1.8, -12.2, 0xd2b13a], [-4.6, -16, 0xa53aa0]].forEach(a => table(...a));
-// Globos y carteles
-[[-6.5, -17, 0xff3355], [6.5, -17.2, 0x33aaff], [-6.2, -12, 0xffcc33], [6.3, -11.5, 0x44dd77]].forEach(([x, z, c]) => {
-  sph(0.3, x, 2.4, z, lam(c)); box(0.01, 1.4, 0.01, x, 1.7, z, lam(0xdddddd));
-});
-poster(posterTex('FELIZ CUMPLE', '#2a5a8a', '#ffe08a', 'Puty\'s'), 1.3, 1.8, -6.9, 1.7, -14, Math.PI / 2);
-poster(posterTex('CELEBRA CON NOSOTROS', '#8a2a4a', '#fff', '¡Pizza!'), 1.3, 1.8, 6.9, 1.7, -14.5, -Math.PI / 2);
+[[-4, -13.5, 1.0], [4, -13.5, 1.0], [-1.8, -11.5, 0.9], [1.9, -12.3, 0.9], [-5.2, -16.2, 1.0]].forEach(a => vitrine(...a));
+// Candelabro
+const chandelier = new THREE.Group(); chandelier.position.set(0, H - 0.5, -10.7); scene.add(chandelier);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.04, 6, 20), lam(0x7a6020)); ring.rotation.x = Math.PI / 2; chandelier.add(ring);
+for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; cyl(0.03, 0.03, 0.2, Math.cos(a) * 0.8, 0.12, Math.sin(a) * 0.8, lam(0xeeeeee), chandelier); sph(0.04, Math.cos(a) * 0.8, 0.26, Math.sin(a) * 0.8, bas(0xffcf70), chandelier); }
+// Retratos
+poster(posterTex('LA CONDESA', '#1c1214', '#c9b27a', '1821'), 1.3, 1.8, -6.9, 1.7, -14, Math.PI / 2);
+poster(posterTex('EL VERDUGO', '#161616', '#b04030', '1788'), 1.3, 1.8, 6.9, 1.7, -14.5, -Math.PI / 2);
+poster(posterTex('NO TOCAR', '#2a1010', '#e0d0b0', 'Cera frágil'), 1.0, 1.4, -2.0, 1.8, -10.12, Math.PI);
+poster(posterTex('PROHIBIDO FLASH', '#101a22', '#a0c0d0', ''), 1.0, 1.4, 2.0, 1.8, -10.12, Math.PI);
 
-// Cocina
-box(4, 1, 1, 9.8, 0.5, -17.3, lam(0x9a9a9a)); box(1, 1, 3.5, 11.4, 0.5, -14, lam(0x8a8a8a));
-cyl(0.3, 0.3, 0.4, 9, 1.2, -17.3, lam(0x555555)); cyl(0.25, 0.25, 0.3, 10.4, 1.15, -17.3, lam(0x666666));
-box(1.5, 2, 0.8, 8, 1, -10.6, lam(0xb0b0b0));
+// Taller de cera (antes cocina)
+box(4, 1, 1, 9.8, 0.5, -17.3, lam(0x3a2a20)); box(1, 1, 3.5, 11.4, 0.5, -14, lam(0x2a2018));
+cyl(0.45, 0.4, 0.7, 9, 1.0, -17.3, lam(0x333333)); cyl(0.4, 0.4, 0.05, 9, 1.37, -17.3, new THREE.MeshBasicMaterial({ color: 0xe8a040 }));
+[[10.2, -17.3], [10.9, -17.3], [11.4, -15.5], [11.4, -13]].forEach(([x, z]) => sph(0.17, x, 1.15, z, lam(0xd9caa2, { emissive: 0x17110a })));
+box(1.5, 2, 0.8, 8, 1, -10.6, lam(0x2a2a2e));
+const moldL = plight(0xff9a3c, 0.9, 6, 9, 1.7, -17.0);
 
-// Almacén: estanterías
-box(0.5, 2.2, 2.6, -9.1, 1.1, -4, lam(0x4a3a2a)); box(1.2, 1, 1, -7.2, 0.5, -5.3, lam(0x7a5a3a)); box(0.8, 0.8, 0.8, -8.2, 0.4, -2.7, lam(0x6a4a2a));
-// Mascarilla vieja en el almacén
-sph(0.28, -9.3, 1.9, -4.5, lam(0xcfcfcf));
+// Almacén de cera: estantes, cajas y charcos derretidos
+box(0.5, 2.2, 2.6, -9.1, 1.1, -4, lam(0x3a2a22)); box(1.2, 1, 1, -7.2, 0.5, -5.3, lam(0x5a4030)); box(0.8, 0.8, 0.8, -8.2, 0.4, -2.7, lam(0x4a3426));
+[[-8.0, -3.0], [-7.4, -4.6], [-8.6, -5.4]].forEach(([x, z]) => { const p = sph(0.5, x, 0.02, z, lam(0xc9b98a, { emissive: 0x15100a })); p.scale.y = 0.04; });
+[[-9.3, 1.9, -4.5], [-9.3, 1.9, -3.7], [-9.3, 1.9, -3.0]].forEach(([x, y, z]) => sph(0.22, x, y, z, lam(0xd9caa2, { emissive: 0x17110a })));
 
-// Cove pirata: cortinas + cartel
-const curtMat = lam(0x9a1228, { side: THREE.DoubleSide });
+// Vitrina del payaso: cortinas de terciopelo + cartel
+const curtMat = lam(0x7a0d1e, { side: THREE.DoubleSide });
 const curtA = box(0.12, 3, 2.5, -7.2, 1.5, -13.25, curtMat);
 const curtB = box(0.12, 3, 2.5, -7.2, 1.5, -15.75, curtMat);
-poster(posterTex('FUERA DE SERVICIO', '#222', '#e8e8e8', '¡Vuelve pronto!'), 1.1, 1.5, -7.0, 1.6, -17.4, -Math.PI / 2 + 0.0);
-const shipWheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 14), lam(0x6a4a2a));
-shipWheel.position.set(-11.8, 2, -14); shipWheel.rotation.y = Math.PI / 2; scene.add(shipWheel);
+poster(posterTex('FUERA DE EXPOSICIÓN', '#1a1a1a', '#d8d0c0', 'No abrir'), 1.1, 1.5, -7.0, 1.6, -17.4, -Math.PI / 2);
+box(4.6, 0.1, 6.4, -9.6, 0.05, -14.5, lam(0x2a0c10));
 
 /* ------------------------------------------------------------------ */
 /* Oficina: mobiliario                                                 */
@@ -219,15 +224,15 @@ for (let i = 0; i < 3; i++) { const b = box(0.04, 0.26, 0.01, 0, 0, 0, lam(0x9a9
 // Teléfono, vaso, peluche
 box(0.3, 0.1, 0.22, -1.1, 0.89, 0.45, lam(0x2a2a2a));
 cyl(0.05, 0.04, 0.12, 0.2, 0.9, 0.55, lam(0xcc2244));
-sph(0.1, -1.2, 0.95, 0.1, lam(0x8a5a2a)); sph(0.07, -1.2, 1.07, 0.1, lam(0x8a5a2a));
+sph(0.14, -1.2, 0.98, 0.1, lam(0xd9caa2, { emissive: 0x17110a }));
 // Silla (detrás de cámara)
 box(0.7, 0.1, 0.7, 0, 0.5, 1.9, lam(0x222222));
 // Posters oficina
-poster(posterTex('¡DIVIERTETE!', '#d9b43a', '#5a1a1a', 'Puty\'s'), 1.1, 1.55, -1.7, 1.7, -1.88, 0);
-poster(posterTex('NO CORRER', '#2f5f8f', '#fff', 'en el local'), 1.1, 1.55, 1.7, 1.7, -1.88, 0);
+poster(posterTex('HORARIO 9-18h', '#b89a4a', '#3a1010', 'Museo'), 1.1, 1.55, -1.7, 1.7, -1.88, 0);
+poster(posterTex('NO TOCAR', '#2a2f3a', '#e0d8c0', 'las figuras'), 1.1, 1.55, 1.7, 1.7, -1.88, 0);
 poster(posterTex('REGLAS', '#3a3a3a', '#d0d0d0', 'Turno nocturno'), 0.9, 1.3, 0, 1.9, -1.88, 0);
 // Cinta dibujo infantil
-poster(posterTex('MI AMIGO PUTY', '#e7d9a8', '#7a2a2a', ''), 0.9, 1.25, -2.88, 1.9, 2.0, Math.PI / 2);
+poster(posterTex('SE BUSCA', '#d8cfa8', '#4a1a1a', 'guardia anterior'), 0.9, 1.25, -2.88, 1.9, 2.0, Math.PI / 2);
 
 // Puertas deslizantes
 const doorMat = lam(0x707883);
@@ -266,73 +271,99 @@ const flashR = plight(0xfff1c8, 0, 9, 4.4, 2.1, 0.1);
 /* ------------------------------------------------------------------ */
 /* Animatrónicos                                                       */
 /* ------------------------------------------------------------------ */
-function buildAnimatronic(kind) {
-  const col = { teddy: 0x6e4220, bunny: 0x5a4a9a, chicken: 0xd9b623, fox: 0xa62d1c }[kind];
-  const light = { teddy: 0xb08050, bunny: 0xb8b0d8, chicken: 0xf5e08a, fox: 0xd8b090 }[kind];
-  const g = new THREE.Group();
-  const body = lam(col), lite = lam(light), dark = lam(0x111111), white = lam(0xf0f0f0);
-  // Cuerpo
-  cyl(0.38, 0.5, 1.0, 0, 1.0, 0, body, g, 18);
-  cyl(0.3, 0.36, 0.7, 0, 1.05, 0.04, lite, g, 18).scale.set(1, 1, 0.8);
-  // Piernas y pies
-  [-0.2, 0.2].forEach(x => { cyl(0.14, 0.16, 0.6, x, 0.32, 0, body, g); box(0.26, 0.1, 0.38, x, 0.05, 0.08, dark, g); });
+function buildAnimatronic(kind, decoy) {
+  const g = new THREE.Group(), r = new THREE.Group(); g.add(r);
+  const wax = c => lam(c, { emissive: 0x17110a });
+  const skin = wax(0xd9caa2), skinDk = wax(0xb4a272);
+  const cloth = wax({ teddy: 0x1b1715, bunny: 0x2a1233, chicken: 0xe4dfd0, fox: 0xe6dccb }[kind]);
+  const dark = lam(0x0d0b0b), white = lam(0xf0ead8), blood = lam(0x4a0608);
+  const eyeMat = bas(decoy ? 0x1c1912 : { teddy: 0xff7a1c, bunny: 0xffe27a, chicken: 0xffffff, fox: 0x9cff6a }[kind]);
+  const P = {   // torso r-top, r-bottom, alto, y | pierna alto, sep | hombro y,x, largo brazo | y cabeza
+    teddy:   { t: [0.5, 0.62, 1.15, 1.15], lg: [0.7, 0.24],  sh: [1.65, 0.78], al: 1.0,  hy: 2.15, ar: 0.13 },
+    bunny:   { t: [0.2, 0.26, 0.6, 1.75],  lg: [0, 0],        sh: [1.9, 0.34],  al: 0.95, hy: 2.45, ar: 0.06 },
+    chicken: { t: [0.3, 0.34, 0.75, 0.95], lg: [0.55, 0.14], sh: [1.2, 0.36],  al: 0.7,  hy: 1.62, ar: 0.07 },
+    fox:     { t: [0.2, 0.28, 1.0, 1.4],   lg: [1.0, 0.17],  sh: [1.85, 0.36], al: 1.5,  hy: 2.35, ar: 0.07 },
+  }[kind];
+  // Torso
+  cyl(P.t[0], P.t[1], P.t[2], 0, P.t[3], 0, cloth, r, 18);
+  // Piernas / vestido
+  if (kind === 'bunny') {
+    cyl(0.2, 0.85, 1.75, 0, 0.88, 0, cloth, r, 20);
+    const lace = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 6, 16), white); lace.rotation.x = Math.PI / 2; lace.position.set(0, 2.0, 0); r.add(lace);
+    cyl(0.07, 0.09, 0.4, 0, 2.2, 0, skin, r);                                       // cuello largo
+  } else {
+    [-1, 1].forEach(s => { cyl(P.ar * 1.3, P.ar * 1.5, P.lg[0], s * P.lg[1], P.lg[0] / 2, 0, kind === 'fox' ? lam(s < 0 ? 0xaa1020 : 0xe8e0d0) : cloth, r); box(0.28, 0.1, 0.44, s * P.lg[1], 0.05, 0.08, dark, r); });
+  }
   // Brazos
   const arms = [];
   [-1, 1].forEach(s => {
-    const a = new THREE.Group(); a.position.set(s * 0.55, 1.42, 0); g.add(a);
-    cyl(0.1, 0.09, 0.85, 0, -0.38, 0, body, a); sph(0.11, 0, -0.85, 0, lite, a);
-    a.rotation.z = s * 0.12; arms.push(a);
+    const a = new THREE.Group(); a.position.set(s * P.sh[1], P.sh[0], 0); r.add(a);
+    cyl(P.ar, P.ar * 0.85, P.al, 0, -P.al / 2, 0, kind === 'teddy' || kind === 'bunny' ? cloth : (kind === 'fox' ? lam(0xe8e0d0) : cloth), a);
+    const hand = sph(kind === 'fox' ? 0.15 : P.ar * 1.3, 0, -P.al - 0.02, 0, skin, a);
+    if (kind === 'fox') [-0.1, -0.03, 0.04, 0.1].forEach(fx => box(0.025, 0.3, 0.025, fx, -P.al - 0.2, 0, skinDk, a));
+    a.rotation.z = s * 0.1; arms.push(a);
   });
-  // Cabeza
-  const head = new THREE.Group(); head.position.set(0, 1.92, 0); g.add(head);
-  const skull = sph(0.4, 0, 0, 0, body, head); skull.scale.set(1.05, 0.92, 0.95);
-  const muzzle = sph(0.22, 0, -0.1, 0.26, lite, head); muzzle.scale.set(1.1, 0.75, 0.9);
-  sph(0.055, 0, -0.03, 0.46, dark, head);                                // nariz
-  // Ojos brillantes
-  const eyes = [];
-  [-1, 1].forEach(s => {
-    const e = sph(0.095, s * 0.16, 0.1, 0.32, bas(0xffffff), head);
-    sph(0.045, s * 0.16, 0.1, 0.41, bas(0x000000), head);
-    eyes.push(e);
-  });
-  // Mandíbula
-  const jaw = new THREE.Group(); jaw.position.set(0, -0.2, 0.18); head.add(jaw);
-  box(0.32, 0.07, 0.3, 0, -0.03, 0.08, lam(0x330508), jaw);
-  for (let i = -2; i <= 2; i++) box(0.04, 0.05, 0.03, i * 0.065, 0.02, 0.22, white, jaw);
-  // Rasgos propios
-  if (kind === 'teddy') {
-    [-1, 1].forEach(s => { sph(0.14, s * 0.34, 0.3, 0, body, head); sph(0.08, s * 0.34, 0.3, 0.06, lite, head); });
-    cyl(0.2, 0.2, 0.3, 0, 0.5, 0, dark, head, 16); cyl(0.32, 0.32, 0.03, 0, 0.36, 0, dark, head, 16);
-    [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.14, 8), dark); c.position.set(s * 0.09, 1.55, 0.37); c.rotation.z = s * -Math.PI / 2; g.add(c); });
-    sph(0.04, 0, 1.55, 0.37, dark, g);
-  } else if (kind === 'bunny') {
-    [-1, 1].forEach(s => {
-      const ear = box(0.11, 0.75, 0.06, s * 0.2, 0.62, -0.02, body, head); ear.rotation.z = s * -0.18;
-      const inner = box(0.05, 0.6, 0.02, s * 0.2, 0.62, 0.02, lam(0xd890b8), head); inner.rotation.z = s * -0.18;
-    });
-    const bt = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.14, 8), lam(0xaa1133));
-    bt.position.set(-0.08, 1.55, 0.37); bt.rotation.z = Math.PI / 2; g.add(bt);
-    const bt2 = bt.clone(); bt2.position.x = 0.08; bt2.rotation.z = -Math.PI / 2; g.add(bt2);
-  } else if (kind === 'chicken') {
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), lam(0xe8801c));
-    beak.position.set(0, -0.07, 0.5); beak.rotation.x = Math.PI / 2; head.add(beak);
-    [-1, 0, 1].forEach(i => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 6), lam(0xd02020)); c.position.set(i * 0.1, 0.45, 0); head.add(c); });
-    const bib = box(0.5, 0.35, 0.03, 0, 1.45, 0.38, lam(0xf6f1e4), g);
-    // pico superior brillante
-    sph(0.05, 0, 0.0, 0.52, lam(0xffa040), head);
-  } else if (kind === 'fox') {
-    [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 8), body); c.position.set(s * 0.27, 0.42, 0); c.rotation.z = s * -0.25; head.add(c); });
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.42, 8), lite); snout.position.set(0, -0.08, 0.42); snout.rotation.x = Math.PI / 2; head.add(snout);
-    // parche en el ojo
-    const patch = sph(0.13, -0.16, 0.1, 0.3, dark, head); patch.scale.set(1, 1, 0.5);
-    // garfio
-    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 12, Math.PI * 1.4), lam(0xc8c8c8));
-    hook.position.set(0, -0.98, 0); hook.rotation.y = Math.PI / 2; arms[1].add(hook);
-    // jirones
-    box(0.12, 0.5, 0.02, 0.15, 0.9, 0.34, lam(0x701010), g);
+  if (kind === 'teddy') {                                     // hacha en la mano derecha
+    cyl(0.03, 0.03, 1.5, 0, -P.al, 0.1, lam(0x3a2412), arms[1]).rotation.x = Math.PI / 2 - 0.2;
+    const blade = box(0.06, 0.4, 0.5, 0, -P.al - 0.02, 0.78, lam(0x9a9a9a), arms[1]); blade.rotation.x = -0.2;
   }
-  g.userData = { head, jaw, eyes, arms, kind };
+  // Cabeza
+  const head = new THREE.Group(); head.position.set(0, P.hy, 0); r.add(head);
+  const skull = sph(0.4, 0, 0, 0, skin, head); skull.scale.set(1.0, 0.95, 0.96);
+  const jawBase = sph(0.22, 0, -0.14, 0.2, skin, head); jawBase.scale.set(1.1, 0.7, 0.9);
+  // Grietas
+  [[-0.2, 0.2, 0.2], [0.18, 0.12, -0.3], [0.05, -0.05, 0.5], [-0.12, -0.18, -0.15], [0.26, -0.05, 0.1]].forEach(([x, y, rz]) => {
+    const c = box(0.018, 0.17, 0.012, x, y, Math.sqrt(Math.max(0.01, 0.152 - x * x - y * y)) * 0.99 + 0.02, dark, head); c.rotation.z = rz;
+  });
+  // Ojos: cuencas negras + luz
+  const eyes = [], er = kind === 'chicken' ? 0.1 : 0.075;
+  [-1, 1].forEach(s => {
+    const so = sph(er * 1.5, s * 0.16, 0.1, 0.3, dark, head); so.scale.z = 0.5;
+    eyes.push(sph(er, s * 0.16, 0.1, 0.34, eyeMat, head));
+  });
+  // Dientes fijos superiores + mandíbula
+  for (let i = -3; i <= 3; i++) box(0.035, kind === 'fox' ? 0.07 : 0.045, 0.03, i * 0.05, -0.15, 0.36, white, head);
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.2, 0.16); head.add(jaw);
+  box(0.3, 0.07, 0.3, 0, -0.03, 0.08, blood, jaw);
+  for (let i = -3; i <= 3; i++) box(0.035, 0.05, 0.03, i * 0.05, 0.02, 0.22, white, jaw);
+  // Rasgos propios
+  if (kind === 'teddy') {                                       // capucha de verdugo + máscara
+    const hood = sph(0.46, 0, 0.06, -0.1, dark, head); hood.scale.set(1.0, 1.0, 1.0);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.55, 12), dark); cone.position.set(0, 0.55, -0.12); head.add(cone);
+    box(0.5, 0.1, 0.1, 0, -0.02, 0.33, dark, head);
+  } else if (kind === 'bunny') {                                // peinado + mejilla derretida + collar
+    const hair = sph(0.43, 0, 0.05, -0.13, lam(0x120c10), head); hair.scale.set(1.05, 1.0, 0.95);
+    sph(0.18, 0, 0.42, -0.16, lam(0x120c10), head);
+    [-0.2, -0.12, -0.26].forEach((x, i) => { const d = sph(0.06, x, -0.2 - i * 0.07, 0.33, skinDk, head); d.scale.set(1, 2.4 + i, 0.8); });
+    sph(0.1, 0.24, 0.0, 0.3, skinDk, head).scale.set(1, 1.6, 0.5);
+  } else if (kind === 'chicken') {                              // marinerito
+    cyl(0.2, 0.2, 0.12, 0, 0.42, 0, lam(0x16264a), head);
+    box(0.6, 0.12, 0.35, 0, 1.38, 0.06, lam(0x16264a), r);
+    box(0.08, 0.5, 0.04, 0, 1.15, 0.31, lam(0xc02020), r);
+    head.rotation.z = 0.22;
+  } else if (kind === 'fox') {                                  // payaso
+    const nose = sph(0.07, 0, 0.0, 0.4, lam(0xd01020), head);
+    [-1, 1].forEach(s => { sph(0.14, s * 0.42, 0.14, -0.02, lam(0xc02030), head); sph(0.1, s * 0.4, 0.3, -0.02, lam(0xc02030), head); });
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 10), lam(0xaa1020)); hat.position.set(0, 0.55, 0); head.add(hat);
+    const grin = box(0.54, 0.07, 0.04, 0, -0.1, 0.345, lam(0xc01020), head);
+    [-1, 1].forEach(s => { const e = box(0.16, 0.06, 0.04, s * 0.32, -0.04, 0.3, lam(0xc01020), head); e.rotation.z = s * 0.7; });
+    [-1, 1].forEach(s => { const t = box(0.04, 0.22, 0.02, s * 0.15, -0.0, 0.37, dark, head); });
+  }
+  r.scale.setScalar(kind === 'chicken' ? 0.75 : 1);
+  const sc = r.scale.y;
+  g.userData = {
+    head, jaw, eyes, arms, kind, rig: r, headY: P.hy * sc, baseS: sc,
+    scareScale: kind === 'chicken' ? 1.5 : 1,
+    headBase: head.position.clone(), headRZ: head.rotation.z,
+  };
   return g;
+}
+function resetPose(a) {
+  const u = a.group.userData;
+  u.head.position.copy(u.headBase); u.head.scale.set(1, 1, 1); u.head.rotation.set(0, 0, u.headRZ);
+  u.jaw.rotation.x = 0; u.rig.scale.setScalar(u.baseS); u.rig.rotation.set(0, 0, 0); u.rig.position.set(0, 0, 0);
+  u.arms.forEach((m, i) => { m.rotation.set(0, 0, (i ? 1 : -1) * 0.1); });
+  a.melt = 0;
 }
 
 // Ubicaciones: p base, spread por animatrónico, rotación
@@ -369,10 +400,10 @@ const NIGHT_AI = [            // teddy, bunny, chicken, fox
   [12, 13, 12, 12],
 ];
 const AN = [
-  { id: 'teddy', name: 'Don Teddy', interval: 6.0 },
-  { id: 'bunny', name: 'Coni el Conejo', interval: 5.0 },
-  { id: 'chicken', name: 'Pipa la Pollita', interval: 5.5 },
-  { id: 'fox', name: 'Capitán Colmillo', interval: 5.0 },
+  { id: 'teddy', name: 'El Verdugo', interval: 6.0 },
+  { id: 'bunny', name: 'La Condesa', interval: 5.0 },
+  { id: 'chicken', name: 'El Niño del Espejo', interval: 5.5 },
+  { id: 'fox', name: 'El Payaso Pálido', interval: 5.0 },
 ];
 AN.forEach(a => {
   a.group = buildAnimatronic(a.id); scene.add(a.group);
@@ -389,17 +420,22 @@ function placeAt(a) {
   a.group.visible = true;
 }
 
+// Figuras de cera decorativas (inmóviles, ojos apagados): confunden al jugador
+[['bunny', -5.8, -8.6, Math.PI / 2], ['chicken', 5.8, -8.3, -Math.PI / 2], ['teddy', -6.2, -11.4, 0.3], ['fox', 6.3, -16.2, -0.4],
+ ['chicken', -6.3, -15.4, 0.6], ['bunny', 6.2, -12.8, -0.5], ['teddy', -9.0, -2.7, Math.PI / 2], ['fox', 11.2, -11.4, -2.3]]
+  .forEach(([k, x, z, ry]) => { const d = buildAnimatronic(k, true); d.position.set(x, 0, z); d.rotation.y = ry; scene.add(d); });
+
 /* ------------------------------------------------------------------ */
 /* Cámaras de seguridad                                                */
 /* ------------------------------------------------------------------ */
 const CAMS = [
-  { id: '1A', name: 'ESCENARIO', pos: [0, 3.0, -11.4], look: [0, 1.2, -17], locs: ['stage'], btn: [118, 6] },
-  { id: '1B', name: 'COMEDOR', pos: [6.4, 3.0, -17.2], look: [-2.5, 0.8, -11.8], locs: ['dining'], btn: [118, 52] },
-  { id: '1C', name: 'COVE PIRATA', pos: [-3.2, 2.9, -13.6], look: [-9.5, 1.1, -14.7], locs: ['cove'], btn: [24, 52] },
-  { id: '2A', name: 'PASILLO OESTE', pos: [-4.6, 2.7, -9.6], look: [-4.6, 0.9, 0], locs: ['whall', 'wcorner'], btn: [40, 120] },
-  { id: '2B', name: 'ALMACÉN', pos: [-9.2, 2.7, -2.4], look: [-7.4, 0.8, -5.2], locs: ['closet'], btn: [8, 168] },
-  { id: '4A', name: 'PASILLO ESTE', pos: [4.6, 2.7, -9.6], look: [4.6, 0.9, 0], locs: ['ehall', 'ecorner'], btn: [196, 120] },
-  { id: '5', name: 'COCINA', pos: [11.6, 2.8, -10.6], look: [8.5, 0.9, -15], locs: ['kitchen'], btn: [232, 52], audioOnly: true },
+  { id: '1A', name: 'SALÓN DEL TRONO', pos: [0, 3.0, -11.4], look: [0, 1.2, -17], locs: ['stage'], btn: [118, 6] },
+  { id: '1B', name: 'SALA PRINCIPAL', pos: [6.4, 3.0, -17.2], look: [-2.5, 0.8, -11.8], locs: ['dining'], btn: [118, 52] },
+  { id: '1C', name: 'VITRINA DEL PAYASO', pos: [-3.2, 2.9, -13.6], look: [-9.5, 1.1, -14.7], locs: ['cove'], btn: [24, 52] },
+  { id: '2A', name: 'GALERÍA OESTE', pos: [-4.6, 2.7, -9.6], look: [-4.6, 0.9, 0], locs: ['whall', 'wcorner'], btn: [40, 120] },
+  { id: '2B', name: 'ALMACÉN DE CERA', pos: [-9.2, 2.7, -2.4], look: [-7.4, 0.8, -5.2], locs: ['closet'], btn: [8, 168] },
+  { id: '4A', name: 'GALERÍA ESTE', pos: [4.6, 2.7, -9.6], look: [4.6, 0.9, 0], locs: ['ehall', 'ecorner'], btn: [196, 120] },
+  { id: '5', name: 'TALLER DE CERA', pos: [11.6, 2.8, -10.6], look: [8.5, 0.9, -15], locs: ['kitchen'], btn: [232, 52], audioOnly: true },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -425,7 +461,7 @@ function hideAllScreens() { ['menu', 'nightCard', 'gameOver', 'win', 'ending'].f
 function resetWorld() {
   AN.forEach(a => {
     a.loc = a.id === 'fox' ? 'cove' : 'stage'; a.acc = rnd(0, a.interval); a.arrived = 0;
-    a.group.scale.set(1, 1, 1); a.group.userData.jaw.rotation.x = 0;
+    a.group.scale.set(1, 1, 1); resetPose(a); a.melt = 0;
   });
   fox.stage = 0; fox.state = 'cove'; fox.runT = 0;
   AN.forEach(placeAt);
@@ -462,17 +498,17 @@ function startNight(n) {
 /* Llamada telefónica                                                  */
 /* ------------------------------------------------------------------ */
 const CALLS = [
-  ['¿Hola? ¿Hola? Bueno, si estás oyendo esto, ya empezaste tu primera noche en Puty\'s.',
-   'Ejem… los personajes pueden moverse un poco por la noche. Es por los servos, se traban si se quedan quietos.',
-   'Si alguno aparece en tu puerta, cierra la puerta. Pero ojo con la energía.',
-   'Buena suerte. Y no mires a Colmillo… mucho tiempo.'],
-  ['Hola de nuevo. Ayer sobreviviste, lo cual es… estadísticamente raro.',
-   'Pipa se queda quieta si la estás mirando por la cámara. Don Teddy solo se mueve cuando miras la pantalla.',
-   'Colmillo corre por el pasillo oeste si lo ignoras demasiado.'],
-  ['Estooo… yo ya no debería estar al teléfono. Tú tampoco deberías estar ahí.',
-   'Revisa las luces de los pasillos. Los ojos brillan en la oscuridad. Eso es… normal. Creo.'],
-  ['Mira, si te quedas sin energía… escucha la música. No hagas ruido.'],
-  ['Es la última noche. Han pasado… cosas. Solo sobrevive hasta las seis.'],
+  ['¿Hola? Soy yo, el guardia de la noche anterior. Bienvenido al Museo de Cera Villa Sombría.',
+   'Solo tienes que vigilar hasta las seis. Las figuras… a veces cambian de sitio. Es la cera, se dilata con el calor. Eso dicen.',
+   'Si alguien aparece en tu puerta, ciérrala. La linterna las congela, pero el calor las derrite, y eso gasta energía.',
+   'No mires al Payaso. Aunque, claro, tú siempre vas a mirarlo.'],
+  ['Hola de nuevo. Sobreviviste, lo cual es… estadísticamente raro.',
+   'El Verdugo solo se mueve cuando miras la pantalla. El Niño se queda quieto si lo estás viendo.',
+   'Y el Payaso corre por la galería oeste si lo dejas solo en su vitrina.'],
+  ['Yo ya no debería estar al teléfono. Tú tampoco deberías estar ahí.',
+   'Revisa las luces de las galerías. Los ojos brillan en la oscuridad. Los de las estatuas de adorno no. Los de las otras, sí.'],
+  ['Si te quedas sin energía… escucha la música. No hagas ruido. No respires.'],
+  ['Es la última noche. Han derretido a la Condesa tres veces y siempre vuelve. Solo sobrevive hasta las seis.'],
 ];
 function startCall() {
   const lines = CALLS[G.night - 1] || [];
@@ -633,6 +669,7 @@ function attempt(a) {
   if (a.id === 'chicken' && camShows(a.loc)) return;               // Pipa se congela si la miras
   if (Math.random() * 20 >= a.ai) return;
   if (a.loc === 'wcorner' || a.loc === 'ecorner') {
+    if (a.lit) return;                                              // la linterna congela la cera
     if (G.t - a.arrived < 3) return;                                // margen de reacción
     const closed = a.loc === 'wcorner' ? G.doorL : G.doorR;
     if (closed) {
@@ -699,23 +736,61 @@ function jumpscare(a) {
 }
 function updateScare(dt) {
   G.scareT += dt;
-  const a = G.scareA, t = G.scareT;
+  const a = G.scareA, t = G.scareT, u = a.group.userData, kind = u.kind;
   const dir = new THREE.Vector3(); camera.getWorldDirection(dir); dir.y = 0; dir.normalize();
-  const sc = 1.0 + Math.min(t, 0.2) * 1.6;
+  const k = clamp(t / 0.18, 0, 1), ease = k * k;
+  const dist = 3.4 - 2.05 * ease;                                  // embestida hacia la cámara
+  const sc = (1.0 + Math.min(t, 0.2) * 1.6) * u.scareScale;
   a.group.scale.setScalar(sc);
-  a.group.position.set(EYE.x + dir.x * 1.35, EYE.y - 1.92 * sc + 0.02, EYE.z + dir.z * 1.35);
+  let lift = 0;
+  if (kind === 'chicken') lift = -(1 - clamp(t / 0.14, 0, 1)) * 1.6;      // salta desde el suelo
+  a.group.position.set(EYE.x + dir.x * dist, EYE.y - u.headY * sc + 0.02 + lift, EYE.z + dir.z * dist);
   a.group.lookAt(EYE.x, a.group.position.y, EYE.z);
-  const j = a.group.userData.jaw; j.rotation.x = -(0.25 + Math.abs(Math.sin(t * 38)) * 0.75);
-  a.group.userData.head.rotation.set(Math.sin(t * 50) * 0.08, 0, Math.sin(t * 43) * 0.1);
-  camera.position.set(EYE.x + (Math.random() - 0.5) * 0.12, EYE.y + (Math.random() - 0.5) * 0.12, EYE.z);
-  ambient.intensity = 1.6;
-  flashL.position.set(EYE.x + dir.x * 0.4, EYE.y + 0.3, EYE.z + dir.z * 0.4); flashL.intensity = 5;
+  const head = u.head, jaw = u.jaw, arms = u.arms, wob = Math.sin(t * 52);
+  head.position.copy(u.headBase); head.scale.set(1, 1, 1);
+  if (kind === 'teddy') {                                                 // levanta el hacha y golpea
+    const up = clamp(t / 0.35, 0, 1), slam = clamp((t - 0.5) / 0.1, 0, 1);
+    arms[1].rotation.x = -2.7 * up + 3.3 * slam; arms[0].rotation.x = -1.2 * up;
+    head.rotation.set(wob * 0.05, 0, wob * 0.04);
+    jaw.rotation.x = -(0.5 + Math.abs(wob) * 0.4);
+    if (!u.slammed && t > 0.58) { u.slammed = true; screenFlash(0.95); Sfx.thud(0); }
+    u.rig.scale.setScalar(u.baseS * (1 + slam * 0.1));
+  } else if (kind === 'bunny') {                                           // el cuello se estira y la cara se parte
+    head.position.y = u.headBase.y + ease * 0.18; head.position.z = ease * 0.15;
+    head.scale.set(1 + 0.18 * ease, 1 + 0.4 * ease + Math.abs(wob) * 0.05, 1 + 0.2 * ease);
+    head.rotation.set(0.2 * ease + wob * 0.04, 0, wob * 0.08);
+    jaw.rotation.x = -(0.9 + Math.abs(Math.sin(t * 30)) * 0.5);
+    arms.forEach((m, i) => { m.rotation.x = -1.6 * ease; m.rotation.z = (i ? 1 : -1) * (0.3 + wob * 0.1); });
+  } else if (kind === 'chicken') {                                         // la cabeza gira 180° y encaja de golpe
+    head.rotation.set(0, t < 0.32 ? Math.PI : 0, 0.22 + wob * 0.08);
+    if (!u.snapped && t > 0.32) { u.snapped = true; screenFlash(0.8); }
+    jaw.rotation.x = -(0.7 + Math.abs(Math.sin(t * 40)) * 0.6);
+    arms.forEach((m, i) => { m.rotation.x = -1.9; m.rotation.z = (i ? 1 : -1) * 0.2; });
+    u.rig.rotation.z = Math.sin(t * 35) * 0.1;
+  } else {                                                                 // payaso: brazos abiertos y cara que se deforma
+    arms.forEach((m, i) => { m.rotation.z = (i ? 1 : -1) * (1.5 * ease + wob * 0.1); m.rotation.x = -0.6 * ease; });
+    head.rotation.set(wob * 0.12, wob * 0.2, wob * 0.15);
+    head.scale.set(1 + Math.sin(t * 20) * 0.12, 1 - Math.abs(Math.sin(t * 17)) * 0.2 + ease * 0.15, 1);
+    jaw.rotation.x = -(0.8 + Math.abs(Math.sin(t * 36)) * 0.6);
+    u.rig.rotation.z = Math.sin(t * 28) * 0.12;
+  }
+  // glitch: parpadeos y cámara sacudida
+  a.group.visible = t > 1.2 || Math.random() > 0.1;
+  G.roll = (Math.random() - 0.5) * 0.14 * (t < 1.3 ? 1 : 0);
+  camera.position.set(EYE.x + (Math.random() - 0.5) * 0.14, EYE.y + (Math.random() - 0.5) * 0.14, EYE.z);
+  ambient.intensity = 1.5 + (Math.random() < 0.15 ? 1.2 : 0);
+  flashL.position.set(EYE.x + dir.x * 0.4, EYE.y + 0.3, EYE.z + dir.z * 0.4); flashL.intensity = Math.random() < 0.1 ? 0 : 5;
   if (t > 1.9 && G.state === 'dead') {
-    G.state = 'over'; ambient.intensity = 0.55; flashL.intensity = 0; flashL.position.set(-4.4, 2.1, 0.1); a.group.scale.setScalar(1);
-    a.group.userData.head.rotation.set(0, 0, 0); camera.position.copy(EYE);
+    G.state = 'over'; ambient.intensity = 0.55; flashL.intensity = 0; flashL.position.set(-4.4, 2.1, 0.1);
+    a.group.scale.setScalar(1); a.group.visible = true; G.roll = 0; resetPose(a); u.slammed = u.snapped = false;
+    camera.position.copy(EYE);
     $('goWho').textContent = `${a.name} te encontró · Noche ${G.night}`;
     show('gameOver');
   }
+}
+function screenFlash(o) {
+  const f = $('flash'); f.style.transition = 'none'; f.style.opacity = o;
+  requestAnimationFrame(() => { f.style.transition = 'opacity .5s'; f.style.opacity = 0; });
 }
 
 /* ------------------------------------------------------------------ */
@@ -807,7 +882,7 @@ function frame() {
   // --- animaciones de ambiente
   blades.rotation.z += dt * 16;
   fanHead.rotation.y = Math.sin(time * 0.6) * 0.7;
-  shipWheel.rotation.z += dt * 0.2;
+  chandelier.rotation.y += dt * 0.2; chandelier.rotation.z = Math.sin(time * 0.5) * 0.03;
   if (!G.powerOut) {
     flick -= dt;
     if (flick <= 0) { flick = rnd(0.05, 1.8); lamp.intensity = Math.random() < 0.12 ? rnd(0.3, 0.9) : 1.5; lampBulb.visible = lamp.intensity > 1; }
@@ -817,6 +892,18 @@ function frame() {
   if (G.lightL) flashL.intensity = Math.random() < 0.04 ? 0.5 : 3.2;
   if (G.lightR) flashR.intensity = Math.random() < 0.04 ? 0.5 : 3.2;
 
+  // --- cera: la linterna congela, pero derrite
+  AN.forEach(a => {
+    if (a.id === 'fox') { a.lit = false; return; }
+    a.lit = G.state === 'play' && !G.powerOut && ((a.loc === 'wcorner' && G.lightL) || (a.loc === 'ecorner' && G.lightR));
+    a.melt = clamp((a.melt || 0) + (a.lit ? dt * 0.2 : -dt * 0.35), 0, 1.2);
+    if (a.melt >= 1 && G.state === 'play') {
+      Sfx.melt(panOf(a.loc)); Sfx.thud(panOf(a.loc));
+      a.loc = 'dining'; a.arrived = G.t; a.melt = 0; placeAt(a); resetPose(a);
+    }
+    const u = a.group.userData;
+    if (a.id !== 'fox' && G.state !== 'dead') { u.rig.scale.y = u.baseS * (1 - 0.22 * a.melt); u.head.scale.y = 1 - 0.3 * a.melt; u.head.position.y = u.headBase.y - 0.08 * a.melt; }
+  });
   // --- cabezas siguen a la cámara; ojos brillan
   AN.forEach(a => {
     if (G.state === 'dead' && a === G.scareA) return;
@@ -839,7 +926,7 @@ function frame() {
     const bob = Math.sin(time * 0.8) * 0.004;
     camera.position.set(EYE.x, EYE.y + bob, EYE.z);
     camera.rotation.set(pitch, yaw, 0);
-  } else camera.rotation.set(0, 0, 0);
+  } else camera.rotation.set(0, 0, G.roll || 0);
 
   // --- render
   if (G.cam && G.state === 'play') {

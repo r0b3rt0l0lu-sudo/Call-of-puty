@@ -134,6 +134,10 @@ const Sfx = (() => {
       tone({ f: 2300 + Math.random() * 600, dur: 0.3, g: vol * 0.6, type: 'sine', delay: 0.04 });
       noise({ f: 3000, type: 'highpass', dur: 0.12, g: vol * 0.8 });
     },
+    melt(pan) {
+      noise({ f: 5000, f2: 1500, type: 'highpass', dur: 1.2, g: 0.3, pan });
+      tone({ f: 300, f2: 60, dur: 1.0, g: 0.2, pan, type: 'sawtooth', lp: 600 });
+    },
     laugh() {
       for (let i = 0; i < 4; i++)
         tone({ f: 170 - i * 12, f2: 110 - i * 8, dur: 0.22, g: 0.25, type: 'sawtooth', lp: 500, delay: i * 0.3 });
