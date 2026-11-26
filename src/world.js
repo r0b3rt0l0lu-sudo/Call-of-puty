@@ -237,7 +237,7 @@ export function buildWorld(scene) {
   const pl = (c, i, d, x, y, z) => { const l = new THREE.PointLight(c, i, d, 1.5); l.position.set(x, y, z); scene.add(l); return l; };
   const roomLights = {
     stage: pl(0xffe0a8, 1.0, 14, 0, 3.0, -15), dining: pl(0xffd7a0, 0.6, 15, 0, 3.0, -12.5),
-    kitchen: pl(0xff9a3c, 0.9, 10, 9.5, 2.6, -15), whall: pl(0xb8c8ff, 0.32, 9, -4.6, 2.9, -5), ehall: pl(0xb8c8ff, 0.32, 9, 4.6, 2.9, -5),
+    kitchen: pl(0xff9a3c, 0.9, 10, 9.5, 2.6, -15), whall: pl(0xb8c8ff, 0.5, 10, -4.6, 2.9, -5), ehall: pl(0xb8c8ff, 0.5, 10, 4.6, 2.9, -5),
     cove: pl(0xff8866, 0.55, 9, -9.5, 2.8, -14.5), closet: pl(0xc8d0ff, 0.25, 6, -8, 2.6, -4),
   };
   const flashL = pl(0xfff1c8, 0, 10, -4.3, 2.1, 0.1), flashR = pl(0xfff1c8, 0, 10, 4.3, 2.1, 0.1);

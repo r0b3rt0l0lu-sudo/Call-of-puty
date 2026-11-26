@@ -554,8 +554,8 @@ function frame() {
       viewCam.position.set(...c.pos); const sway = Math.sin(time * 0.35) * 0.9, ang = Math.atan2(c.look[2] - c.pos[2], c.look[0] - c.pos[0]) + Math.PI / 2;
       viewCam.lookAt(c.look[0] + Math.cos(ang) * sway, c.look[1], c.look[2] + Math.sin(ang) * sway); viewCam.updateMatrixWorld(); cam = viewCam;
     }
-    W.L.ambient.intensity = G.powerOut ? 0.09 : 3.0; scene.fog.density = 0.012;
-    G.staticBurst = Math.max(0, (G.staticBurst || 0) - dt * 2.2); cs.style.opacity = 0.06 + G.staticBurst * 0.75; Sfx.staticLoop(0.06 + G.staticBurst * 0.9);
+    W.L.ambient.intensity = G.powerOut ? 0.09 : 3.6; scene.fog.density = 0.012;
+    G.staticBurst = Math.max(0, (G.staticBurst || 0) - dt * 2.2); cs.style.opacity = 0.035 + G.staticBurst * 0.75; Sfx.staticLoop(0.06 + G.staticBurst * 0.9);
     noiseT += dt; if (noiseT > 0.04) { noiseT = 0; drawNoise(csc, csImg); }
     $('rec').style.visibility = Math.floor(time * 1.5) % 2 ? 'hidden' : 'visible';
     canvas.style.filter = `grayscale(.75) contrast(1.15) brightness(${1.35 + (O.bright - 1) * 0.5}) sepia(.25) hue-rotate(60deg)`;
