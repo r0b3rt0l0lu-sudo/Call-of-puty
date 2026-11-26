@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Cinco Noches en Puty's</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vignette"></div>
+<canvas id="noise" width="160" height="90"></canvas>
+
+<!-- Monitor de cámaras -->
+<div id="monitor" class="hidden">
+  <canvas id="camStatic" width="160" height="90"></canvas>
+  <div id="camOff">SOLO AUDIO</div>
+  <div id="camLabel"></div>
+  <div id="rec">● REC</div>
+  <div id="camMap"></div>
+  <div class="scan"></div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hudTL"><div id="hudNight">Noche 1</div><div id="hudTime">12 AM</div></div>
+  <div id="hudTR">
+    <div id="hudPower">Energía: 100%</div>
+    <div id="hudUsage">Uso: <span id="bars"></span></div>
+  </div>
+  <div id="hudL" class="side">
+    <button id="btnDoorL" class="ctl"><b>PUERTA</b><small>Q</small></button>
+    <button id="btnLightL" class="ctl"><b>LUZ</b><small>A</small></button>
+  </div>
+  <div id="hudR" class="side">
+    <button id="btnDoorR" class="ctl"><b>PUERTA</b><small>E</small></button>
+    <button id="btnLightR" class="ctl"><b>LUZ</b><small>D</small></button>
+  </div>
+  <button id="camBar">▲ CÁMARAS <small>[ESPACIO]</small></button>
+  <div id="subs" class="hidden"></div>
+  <button id="muteCall" class="hidden">Silenciar llamada [M]</button>
+</div>
+
+<div id="flash"></div>
+
+<!-- Pantallas -->
+<div id="menu" class="screen">
+  <h1>CINCO NOCHES<br>EN <span>PUTY'S</span></h1>
+  <p class="sub">Pizzería &amp; Diversión Familiar</p>
+  <button id="btnNew">NUEVA PARTIDA</button>
+  <button id="btnCont" class="hidden">CONTINUAR · NOCHE <span id="contN">2</span></button>
+  <div class="help">
+    <b>Cómo sobrevivir</b>
+    <ul>
+      <li>Mueve el ratón a los lados para mirar las puertas.</li>
+      <li><b>Q / E</b> puertas · <b>A / D</b> luces de pasillo · <b>Espacio</b> cámaras · <b>1-7</b> elegir cámara.</li>
+      <li>Todo gasta energía. Si se acaba… no estarás solo.</li>
+      <li>Sobrevive de las 12 AM a las 6 AM durante cinco noches.</li>
+    </ul>
+  </div>
+</div>
+
+<div id="nightCard" class="screen hidden"><div><div id="ncN">Noche 1</div><div id="ncT">12:00 AM</div></div></div>
+
+<div id="gameOver" class="screen hidden">
+  <h2>TE ATRAPARON</h2>
+  <p id="goWho"></p>
+  <button id="btnRetry">REINTENTAR NOCHE</button>
+  <button id="btnToMenu" class="ghost">MENÚ</button>
+</div>
+
+<div id="win" class="screen hidden">
+  <div id="winTime">6:00 AM</div>
+  <p id="winMsg">Has sobrevivido.</p>
+  <button id="btnNext">SIGUIENTE NOCHE</button>
+</div>
+
+<div id="ending" class="screen hidden">
+  <h2>¡SOBREVIVISTE!</h2>
+  <p>Cinco noches completadas.<br>Tu turno en Puty's ha terminado… por ahora.</p>
+  <button id="btnEndMenu">MENÚ</button>
+</div>
+
+<div id="noWebgl" class="screen hidden"><h2>Tu navegador no soporta WebGL</h2></div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
