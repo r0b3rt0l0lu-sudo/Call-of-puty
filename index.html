@@ -2,14 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Noches en el Museo de Cera</title>
 <link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./lib/three.module.js","three/addons/":"./lib/addons/"}}</script>
 </head>
 <body>
 <canvas id="gl"></canvas>
 <div id="vignette"></div>
+<div id="dangerVig"></div>
 <canvas id="noise" width="160" height="90"></canvas>
+<canvas id="faceFlash" class="hidden" width="320" height="180"></canvas>
+<div id="lockerOverlay" class="hidden"><div class="slit"></div></div>
+<div id="flash"></div>
 
 <!-- Monitor de cámaras -->
 <div id="monitor" class="hidden">
@@ -17,74 +22,108 @@
   <div id="camOff">SOLO AUDIO</div>
   <div id="camLabel"></div>
   <div id="rec">● REC</div>
+  <button id="camExit">SALIR  [E / Espacio]</button>
   <div id="camMap"></div>
+  <div id="camActions">
+    <div id="lockBar" class="bar hidden"><span>CERROJO</span><div class="track"><div id="lockFill"></div></div></div>
+    <button id="btnLock" class="act hidden">REFORZAR CERROJO</button>
+    <button id="btnFind" class="act find hidden">¡TE ENCONTRÉ!  [F]</button>
+    <div id="furnBar" class="bar hidden"><span>HORNO</span><div class="track"><div id="furnFill"></div></div></div>
+    <button id="btnFurnace" class="act furn hidden">MANTÉN PULSADO: ENCENDER EL HORNO</button>
+  </div>
   <div class="scan"></div>
 </div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
+  <div id="hudTR"><div id="hudPower">Energía: 100%</div><div id="hudUsage">Uso: <span id="bars"></span></div></div>
   <div id="hudTL"><div id="hudNight">Noche 1</div><div id="hudTime">12 AM</div></div>
-  <div id="hudTR">
-    <div id="hudPower">Energía: 100%</div>
-    <div id="hudUsage">Uso: <span id="bars"></span></div>
-  </div>
-  <div id="hudL" class="side">
-    <button id="btnDoorL" class="ctl"><b>PUERTA</b><small>Q</small></button>
-    <button id="btnLightL" class="ctl"><b>LINTERNA</b><small>A</small></button>
-  </div>
-  <div id="hudR" class="side">
-    <button id="btnDoorR" class="ctl"><b>PUERTA</b><small>E</small></button>
-    <button id="btnLightR" class="ctl"><b>LINTERNA</b><small>D</small></button>
-  </div>
-  <button id="camBar">▲ CÁMARAS <small>[ESPACIO]</small></button>
+  <div id="cross"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="holdBar" class="hidden"><div id="holdFill"></div></div>
+  <div id="breath" class="hidden"><span>AIRE  [SHIFT]</span><div class="track"><div id="breathFill"></div></div></div>
+  <div id="hintLine" class="hidden"></div>
   <div id="subs" class="hidden"></div>
   <button id="muteCall" class="hidden">Silenciar llamada [M]</button>
 </div>
 
-<div id="flash"></div>
+<!-- Cinemática -->
+<div id="cine" class="hidden">
+  <div class="bar top"></div><div class="bar bot"></div>
+  <div id="cineTitle"></div><div id="cineCap"></div>
+  <div id="cineFade"></div><div id="cineSkip">Esc · saltar</div>
+</div>
 
 <!-- Pantallas -->
-<div id="menu" class="screen">
+<div id="loading" class="screen"><h1>MUSEO<br>DE <span>CERA</span></h1><div class="track big"><div id="loadFill"></div></div><p id="loadTxt">Cargando…</p></div>
+
+<div id="menu" class="screen hidden">
   <h1>MUSEO<br>DE <span>CERA</span></h1>
   <p class="sub">Villa Sombría · Turno de noche</p>
-  <button id="btnNew">NUEVA PARTIDA</button>
-  <button id="btnCont" class="hidden">CONTINUAR · NOCHE <span id="contN">2</span></button>
+  <button id="btnNew">NUEVA PARTIDA <kbd>N</kbd></button>
+  <button id="btnCont" class="hidden">CONTINUAR · NOCHE <span id="contN">2</span> <kbd>C</kbd></button>
+  <button id="btnExtra" class="hidden">NOCHE EXTRA: PESADILLA <kbd>X</kbd></button>
+  <button id="btnArchive" class="ghost">ARCHIVO <kbd>A</kbd></button>
+  <button id="btnOptions" class="ghost">OPCIONES <kbd>O</kbd></button>
+  <button id="btnCredits" class="ghost">CRÉDITOS</button>
   <div class="help">
     <b>Cómo sobrevivir</b>
     <ul>
-      <li>Mueve el ratón a los lados para mirar las puertas.</li>
-      <li><b>Q / E</b> puertas · <b>A / D</b> linternas de galería · <b>Espacio</b> cámaras · <b>1-7</b> elegir cámara.</li>
-      <li>La linterna <b>congela</b> a las figuras… pero el calor las <b>derrite</b> y las hace retroceder. Todo gasta energía.</li>
-      <li>Sobrevive de las 12 AM a las 6 AM durante cinco noches.</li>
+      <li><b>WASD</b> moverte · <b>ratón</b> mirar · <b>E</b> o <b>clic</b> interactuar · <b>Shift</b> aguantar la respiración · <b>Esc</b> pausa.</li>
+      <li>Las <b>puertas</b> y <b>linternas</b> están en los paneles junto a cada puerta. Las <b>cámaras</b>, en el escritorio.</li>
+      <li>Presta atención a los <b>sonidos</b>: cada figura te avisa de lo que debes hacer.</li>
     </ul>
   </div>
 </div>
 
-<div id="nightCard" class="screen hidden"><div><div id="ncN">Noche 1</div><div id="ncT">12:00 AM</div></div></div>
+<div id="options" class="screen hidden">
+  <h2>OPCIONES</h2>
+  <label>Volumen <input id="optVol" type="range" min="0" max="1" step="0.05"></label>
+  <label>Sensibilidad del ratón <input id="optSens" type="range" min="0.3" max="2.5" step="0.05"></label>
+  <label>Brillo <input id="optBright" type="range" min="0.6" max="1.6" step="0.05"></label>
+  <label class="chk"><input id="optSubs" type="checkbox"> Subtítulos y descripciones de sonido</label>
+  <label class="chk"><input id="optHints" type="checkbox"> Pistas visuales</label>
+  <button id="btnOptBack">VOLVER <kbd>Esc</kbd></button>
+</div>
+
+<div id="archive" class="screen hidden">
+  <h2>ARCHIVO</h2>
+  <div id="archEnds"></div>
+  <div class="arch"><div id="archList"></div><div class="archPage"><h3 id="archTitle"></h3><pre id="archBody"></pre></div></div>
+  <button id="btnArchBack">VOLVER <kbd>Esc</kbd></button>
+</div>
+
+<div id="credits" class="screen hidden">
+  <h2>CRÉDITOS</h2>
+  <p class="cred">Diseño, programación y sonido<br><b>Claude Code</b><br><br>Modelos 3D y animaciones<br><b>Claude Design</b><br><br>Música y efectos<br><b>Sintetizados en tiempo real (WebAudio)</b><br><br>Gracias por jugar.<br><small>(clic para volver)</small></p>
+</div>
+
+<div id="pause" class="screen hidden">
+  <h2>PAUSA</h2>
+  <button id="btnResume">CONTINUAR <kbd>Esc</kbd></button>
+  <button id="btnPauseOpt" class="ghost">OPCIONES</button>
+  <button id="btnPauseMenu" class="ghost">SALIR AL MENÚ</button>
+</div>
+<div id="resume" class="screen hidden"><h2>Haz clic para continuar</h2></div>
+
+<div id="nightCard" class="screen hidden"><div><div id="ncN">Noche 1</div><div id="ncT">12:00 AM</div><div id="ncS"></div></div></div>
 
 <div id="gameOver" class="screen hidden">
-  <h2>TE ATRAPARON</h2>
-  <p id="goWho"></p>
-  <button id="btnRetry">REINTENTAR NOCHE</button>
+  <h2>TE ATRAPARON</h2><p id="goWho"></p><p id="goHint" class="hintTxt"></p>
+  <button id="btnRetry">REINTENTAR NOCHE <kbd>Enter</kbd></button>
   <button id="btnToMenu" class="ghost">MENÚ</button>
 </div>
 
-<div id="win" class="screen hidden">
-  <div id="winTime">6:00 AM</div>
-  <p id="winMsg">Has sobrevivido.</p>
-  <button id="btnNext">SIGUIENTE NOCHE</button>
-</div>
+<div id="win" class="screen hidden"><div id="winTime">6:00 AM</div><p id="winMsg"></p><button id="btnNext">CONTINUAR</button></div>
 
-<div id="ending" class="screen hidden">
-  <h2>¡SOBREVIVISTE!</h2>
-  <p>Cinco noches completadas.<br>Villa Sombría cierra sus puertas… por ahora.</p>
-  <button id="btnEndMenu">MENÚ</button>
-</div>
+<div id="choice" class="screen hidden"><p id="choiceTxt" class="story"></p><button id="btnLeave">MARCHARTE</button><button id="btnStay" class="hidden ghost">ACEPTAR LA LLAVE DE AMBROSIO</button></div>
+
+<div id="ending" class="screen hidden"><h2 id="endTitle"></h2><pre id="endLines" class="story"></pre><button id="btnEndMenu">MENÚ</button></div>
+
+<div id="noteReader" class="screen hidden"><div class="paper"><h3 id="nrTitle"></h3><small id="nrFrom"></small><pre id="nrBody"></pre><button id="btnNrClose">CERRAR <kbd>E</kbd></button></div></div>
 
 <div id="noWebgl" class="screen hidden"><h2>Tu navegador no soporta WebGL</h2></div>
 
-<script src="lib/three.min.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/game.js"></script>
+<script type="module" src="src/game.js"></script>
 </body>
 </html>
