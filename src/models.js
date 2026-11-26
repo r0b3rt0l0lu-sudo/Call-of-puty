@@ -4,6 +4,17 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 export const IDS = ['condesa', 'verdugo', 'nino', 'payaso'];
 const store = {};
+/* Lee el .glb; si el servidor no sirve .glb (p. ej. al publicarlo como página), usa la copia en base64 (.glb.json). */
+async function fetchGlb(url) {
+  try {
+    const r = await fetch(url);
+    if (r.ok && !/html/.test(r.headers.get('content-type') || '')) return await r.arrayBuffer();
+  } catch (e) { /* cae a la copia base64 */ }
+  const j = await (await fetch(url + '.json')).json();
+  const bin = atob(j.b64), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
 
 export async function loadAll(onProgress) {
   const loader = new GLTFLoader();
@@ -11,7 +22,7 @@ export async function loadAll(onProgress) {
   IDS.forEach(id => ['normal', 'damaged'].forEach(v => jobs.push([id, v, `models/${id}${v === 'damaged' ? '_damaged' : ''}.glb`])));
   let done = 0;
   for (const [id, v, url] of jobs) {                 // en serie: progreso suave y poca memoria punta
-    const g = await loader.loadAsync(url);
+    const g = await loader.parseAsync(await fetchGlb(url), 'models/');
     (store[id] = store[id] || {})[v] = g;
     onProgress && onProgress(++done / jobs.length);
   }

@@ -12,6 +12,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const params = new URLSearchParams(location.search);
 const HOUR = params.has('fast') ? 6 : 60;           // segundos reales por hora de juego
 const DEBUG = params.has('debug');
+const NOLOCK = params.has('nolock');           // pruebas: sin bloqueo de ratón
+let LOCKFAIL = false;                           // el navegador (p. ej. dentro de un iframe) no permite capturar el ratón: se mira arrastrando
 
 /* ================= ajustes y guardado ================= */
 const DEFAULTS = { vol: 0.8, sens: 1, bright: 1, subs: true, hints: true };
@@ -121,20 +123,21 @@ let AI = null, Cine = null;
 /* ================= entrada: ratón / teclado ================= */
 const canvas = $('gl');
 const lockOn = () => document.pointerLockElement === canvas;
-function needLockCheck() { setTimeout(() => { if (G.state === 'play' && !G.cam && !G.modal && !G.paused && !lockOn() && !params.has('nolock')) show('resume'); }, 450); }
-function lockPointer() { if (params.has('nolock')) return; try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (e) { } }
+function needLockCheck() { setTimeout(() => { if (G.state === 'play' && !G.cam && !G.modal && !G.paused && !lockOn() && !NOLOCK && !LOCKFAIL) show('resume'); }, 450); }
+function lockPointer() { if (NOLOCK || LOCKFAIL) return; try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (e) { } }
 function unlockPointer() { G.intentUnlock = true; try { document.exitPointerLock(); } catch (e) { } setTimeout(() => { G.intentUnlock = false; }, 200); }
+document.addEventListener('pointerlockerror', () => { LOCKFAIL = true; hide('resume'); hint('Tu navegador no deja capturar el ratón: mira arrastrando con el botón izquierdo.', 'lockfail', 7); });
 document.addEventListener('pointerlockchange', () => {
   if (lockOn()) hide('resume');
   if (!lockOn() && !G.intentUnlock && G.state === 'play' && !G.cam && !G.modal && !G.paused) pauseGame(true);
 });
 addEventListener('mousemove', e => {
   if (G.state !== 'play' || G.cam || G.modal || G.paused) return;
-  if (!lockOn() && !(e.buttons & 1) && !params.has('nolock')) return;
+  if (!lockOn() && !(e.buttons & 1) && !NOLOCK) return;
   const s = 0.0022 * O.sens; P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s, -1.35, 1.35);
   if (G.hidden) P.yaw = clamp(P.yaw, Math.PI - 0.7, Math.PI + 0.7);
 });
-canvas.addEventListener('mousedown', e => { if (e.button === 0) { if (G.state === 'play' && !lockOn() && !G.cam && !G.modal && !G.paused && !params.has('nolock')) { lockPointer(); return; } usePress(); } });
+canvas.addEventListener('mousedown', e => { if (e.button === 0) { if (G.state === 'play' && !lockOn() && !G.cam && !G.modal && !G.paused && !NOLOCK && !LOCKFAIL) { lockPointer(); return; } usePress(); } });
 addEventListener('mouseup', e => { if (e.button === 0) useRelease(); });
 addEventListener('keydown', e => {
   if (e.repeat) { if (e.code === 'Space') e.preventDefault(); return; }
