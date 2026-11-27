@@ -35,7 +35,33 @@ scene.fog = new THREE.FogExp2(0x000000, 0.03);
 const camera = new THREE.PerspectiveCamera(72, 1, 0.04, 90); camera.rotation.order = 'YXZ';
 const viewCam = new THREE.PerspectiveCamera(62, 1, 0.1, 90);
 const scareCam = new THREE.PerspectiveCamera(62, 1, 0.02, 60);
-function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = viewCam.aspect = scareCam.aspect = w / h; camera.updateProjectionMatrix(); viewCam.updateProjectionMatrix(); scareCam.updateProjectionMatrix(); }
+const post = (() => {
+  const rt = new THREE.WebGLRenderTarget(4, 4, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: rt.texture }, time: { value: 0 }, amt: { value: 0 }, flash: { value: 0 }, invert: { value: 0 }, res: { value: new THREE.Vector2(1, 1) } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float time, amt, flash, invert; uniform vec2 res; varying vec2 vUv;
+      float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
+      void main(){
+        vec2 uv = vUv;
+        float band = floor(uv.y * 26.0 + floor(time * 24.0));
+        float g = step(0.84, rnd(vec2(band, floor(time * 16.0)))) * amt;
+        uv.x += (rnd(vec2(band, time)) - 0.5) * 0.14 * g;
+        uv += (vec2(rnd(vec2(time, 1.0)), rnd(vec2(time, 2.0))) - 0.5) * 0.012 * amt;
+        float ca = 0.003 + 0.022 * amt;
+        vec3 c = vec3(texture2D(tDiffuse, uv + vec2(ca, 0.0)).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - vec2(ca, 0.0)).b);
+        c = pow(max(c, 0.0), vec3(1.0 / 2.2));
+        c = (c - 0.5) * (1.0 + 0.7 * amt) + 0.5; c.r *= 1.0 + 0.3 * amt; c.gb *= 1.0 - 0.15 * amt;
+        c *= 0.9 + 0.1 * sin(uv.y * res.y * 1.6);
+        c += (rnd(uv * res + time) - 0.5) * 0.22 * amt;
+        c *= mix(1.0, smoothstep(0.95, 0.2, distance(uv, vec2(0.5))), 0.7);
+        c = mix(c, 1.0 - c, invert); c += flash;
+        gl_FragColor = vec4(c, 1.0);
+      }`, depthTest: false, depthWrite: false });
+  const sc = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); sc.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+  return { rt, mat, sc, cam, resize() { const v = new THREE.Vector2(); renderer.getDrawingBufferSize(v); rt.setSize(v.x, v.y); mat.uniforms.res.value.copy(v); } };
+})();
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); post.resize(); camera.aspect = viewCam.aspect = scareCam.aspect = w / h; camera.updateProjectionMatrix(); viewCam.updateProjectionMatrix(); scareCam.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
 /* ================= estado ================= */
@@ -396,33 +422,75 @@ function updatePowerOut(dt) {
 }
 
 /* ================= jumpscare ================= */
+/* Secuencia de muerte: aviso (silencio, luces fuera, la cabeza gira hacia la figura) → golpe con
+   efectos de imagen y la animación del .glb → segundo golpe → corte a negro con zumbido de oídos. */
+const PRE = { condesa: 1.4, verdugo: 1.0, nino: 1.1, payaso: 0.9 };
+const shortest = d => Math.atan2(Math.sin(d), Math.cos(d));
+const ease3 = t => t * t * (3 - 2 * t);
 function jumpscare(id, cause) {
   if (G.state !== 'play') return;
   G.state = 'dead'; endCall(); if (G.cam) { G.cam = false; hide('monitor'); }
-  G.light.L = G.light.R = false; updateLightsFx(); Sfx.stopAmbient(); Sfx.heart(0);
-  if (G.hidden) { hide('lockerOverlay'); }
-  hide('hud'); hide('prompt'); hide('hintLine'); hide('subs'); hide('dangerVig'); hide('breath'); hide('holdBar');
+  G.light.L = G.light.R = false; updateLightsFx(); Sfx.stopAmbient(); Sfx.heart(0); Sfx.staticLoop(0);
+  hide('lockerOverlay'); hide('hud'); hide('prompt'); hide('hintLine'); hide('subs'); hide('dangerVig'); hide('breath'); hide('holdBar'); hide('muteCall');
   Object.values(actors).forEach(a => { if (a.id !== id) a.char.visible = false; });
-  const a = actors[id]; a.target = null; a.char.visible = true; a.char.setEyes(1.2);
+  const a = actors[id]; a.target = null; a.char.visible = true;
+  if (id === 'condesa' && cause !== 'outage') { a.teleport(-2.2, 0, 0.3, Math.PI / 2); a.idle = 'Stare'; a.char.play('Stare', { fade: 0 }); }   // aparece dentro de la garita, a tu lado
+  a.char.setEyes(2.4);
   camera.updateMatrixWorld(true);
-  const f = forward(); G.scare = { id, cause: cause || id, t: 0, fwd: f, light: new THREE.PointLight(0xfff0d8, 2.2, 6, 1.5) };
-  scene.add(G.scare.light);
-  a.char.jumpscareBegin(camera.matrixWorld.clone());
-  Sfx.jumpscare(id); screenFlash(0.95, '#ddd'); setTimeout(() => screenFlash(0.7, '#a00'), 260);
-  unlockPointer();
+  const head = a.char.group.position.clone().add(new THREE.Vector3(0, 1.5, 0)), d = head.sub(camera.position);
+  const S = G.scare = { id, cause: cause || id, t: 0, phase: 'pre', pre: PRE[id] || 1, th: 0, tc: 0, hit2: false, shown: false,
+    yaw0: camera.rotation.y, pit0: camera.rotation.x, yaw1: Math.atan2(-d.x, -d.z), pit1: clamp(Math.atan2(d.y, Math.hypot(d.x, d.z)), -0.45, 0.45),
+    fwd: forward(), light: new THREE.PointLight(0xfff0d8, 0, 7, 1.5) };
+  S.dyaw = shortest(S.yaw1 - S.yaw0); scene.add(S.light);
+  W.L.lamp.intensity = 0; W.L.ambient.intensity = 0.3; scene.fog.density = 0.03;
+  S.light.color.setHex(0x9fb0ff); S.light.position.copy(a.char.group.position).add(new THREE.Vector3(0.6 * Math.sign(camera.position.x - a.char.group.position.x || 1), 1.7, 0.9)); S.light.distance = 7;   // luz fría y débil: se intuye su silueta en la oscuridad
+  Sfx.dropAll(); Sfx.preScare(id, S.pre); unlockPointer();
+}
+function startHit() {
+  const S = G.scare, a = actors[S.id]; S.phase = 'hit'; S.th = 0;
+  camera.updateMatrixWorld(true); S.fwd = forward();
+  a.char.group.visible = true; a.char.jumpscareBegin(camera.matrixWorld.clone()); a.char.setEyes(2.2);
+  W.L.ambient.intensity = 0.55; scene.fog.density = 0.02; S.light.intensity = 3; S.light.color.setHex(0xfff0d8); S.light.distance = 7;
+  Sfx.jumpscare(S.id); post.mat.uniforms.invert.value = 1; post.mat.uniforms.flash.value = 0.9; screenFlash(0.55, '#a00');
 }
 const jOff = new THREE.Vector3();
 function updateScare(dt) {
-  const S = G.scare, a = actors[S.id]; S.t += dt;
-  const k = clamp(S.t / 0.2, 0, 1), dist = 2.6 * (1 - k * k);
-  jOff.copy(S.fwd).multiplyScalar(dist);
-  a.char.jumpscareStep(dt, jOff, scareCam);
-  scareCam.position.x += (Math.random() - 0.5) * 0.04 * (S.t < 1.4 ? 1 : 0); scareCam.position.y += (Math.random() - 0.5) * 0.04 * (S.t < 1.4 ? 1 : 0);
-  S.light.position.copy(scareCam.position); S.light.intensity = Math.random() < 0.08 ? 0.2 : 2.4;
-  a.char.group.visible = !(S.t < 1.6 && Math.random() < 0.06);
-  W.L.ambient.intensity = 0.9; scene.fog.density = 0.02; $('noise').style.opacity = 0.08;
-  if (S.t > 2.0) {
-    G.state = 'over'; scene.remove(S.light); a.char.group.visible = true; W.L.ambient.intensity = 0.75;
+  const S = G.scare, a = actors[S.id], U = post.mat.uniforms; S.t += dt; U.time.value = time;
+  U.flash.value = Math.max(0, U.flash.value - dt * 6);
+  if (S.phase === 'pre') {
+    const k = ease3(clamp(S.t / 0.55, 0, 1));                                   // la cabeza gira sola hacia la figura
+    camera.rotation.set(S.pit0 + (S.pit1 - S.pit0) * k, S.yaw0 + S.dyaw * k, (Math.random() - 0.5) * 0.02 * (S.t / S.pre));
+    W.L.lamp.intensity = Math.random() < 0.12 ? 0.35 : 0;                        // luces que mueren y parpadean
+    a.char.setEyes(1.4 + Math.random() * 2.2); S.light.intensity = (Math.random() < 0.22 ? 0.2 : 2.4) * (0.5 + S.t / S.pre);
+    const k2 = S.t / S.pre; U.amt.value = 0.1 + 0.35 * k2; U.invert.value = Math.random() < 0.015 * k2 * 4 ? 1 : 0;
+    if (S.t >= S.pre) startHit();
+    return;
+  }
+  if (S.phase === 'hit') {
+    S.th += dt; const th = S.th;
+    const k = clamp(th / 0.12, 0, 1), dist = 3.2 * (1 - k * k);                  // embestida
+    jOff.copy(S.fwd).multiplyScalar(dist);
+    a.char.jumpscareStep(th < 0.06 ? 0 : dt, jOff, scareCam);                    // 60 ms de "hit-stop"
+    // cámara: sacudida fuerte + golpe de FOV + segundo golpe
+    const sh = 0.07 * Math.exp(-th * 1.2); scareCam.position.x += (Math.random() - 0.5) * sh; scareCam.position.y += (Math.random() - 0.5) * sh;
+    scareCam.rotateZ((Math.random() - 0.5) * 0.12 * Math.exp(-th * 1.5));
+    let punch = 38 * Math.exp(-th * 7);
+    if (!S.hit2 && th > 1.3) { S.hit2 = true; Sfx.jumpscare2(S.id); U.invert.value = 1; U.flash.value = 1; screenFlash(0.8, '#fff'); S.t2 = th; }
+    if (S.hit2) { const t2 = th - S.t2; punch += 30 * Math.exp(-t2 * 8); scareCam.translateZ(-0.7 * Math.exp(-t2 * 6)); }
+    scareCam.fov = (a.char.cur.cam ? a.char.cur.cam.fov : 62) + punch; scareCam.updateProjectionMatrix();
+    S.light.position.copy(scareCam.position); S.light.intensity = Math.random() < 0.1 ? 0.4 : 3.2;
+    a.char.setEyes(2 + Math.random() * 1.5);
+    U.amt.value = th < 0.5 ? 1 : 0.55 + (S.hit2 ? 0.4 : 0.1) * Math.random();
+    U.invert.value = (th < 0.3 && Math.floor(th * 40) % 3 === 0) || (S.hit2 && th - S.t2 < 0.12 && Math.floor((th - S.t2) * 40) % 2 === 0) ? 1 : 0;
+    a.char.group.visible = !(th < 1.7 && Math.random() < 0.05);                  // parpadeo de la figura
+    $('noise').style.opacity = 0.12;
+    if (th > 2.3) { S.phase = 'cut'; S.tc = 0; a.char.group.visible = false; scene.remove(S.light); Sfx.tinnitus(); U.invert.value = 0; U.amt.value = 0; }
+    return;
+  }
+  // corte a negro: silencio roto solo por el zumbido; luego aparece el texto
+  S.tc += dt;
+  if (S.tc > 1.8 && !S.shown) {
+    S.shown = true; G.state = 'over'; a.char.group.visible = true; W.L.ambient.intensity = 0.75; W.L.lamp.intensity = 2.0; scene.fog.density = 0.03;
     $('goWho').textContent = `${NAMES[S.cause === 'outage' ? 'outage' : S.id]} te atrapó · Noche ${G.night > 5 ? 'extra' : G.night}`; $('goHint').textContent = HINTS[S.cause] || HINTS[S.id]; show('gameOver');
   }
 }
@@ -550,7 +618,13 @@ function frame() {
 
   // render
   let cam = camera;
-  if (G.state === 'dead') { cam = scareCam; }
+  if (G.state === 'dead') {
+    const S = G.scare;
+    if (S && S.phase === 'cut') { renderer.setRenderTarget(null); renderer.setClearColor(0x000000, 1); renderer.clear(); }
+    else { renderer.setRenderTarget(post.rt); renderer.render(scene, S && S.phase === 'hit' ? scareCam : camera); renderer.setRenderTarget(null); renderer.render(post.sc, post.cam); }
+    if (Math.random() < 0.35) drawNoise(nzc, nzImg);
+    return;
+  }
   else if (G.cam && G.state === 'play') {
     const c = W.CAMS[G.camIdx];
     if (!c.audioOnly) {

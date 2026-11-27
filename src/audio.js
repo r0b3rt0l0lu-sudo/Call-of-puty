@@ -1,12 +1,35 @@
 /* Motor de audio procedural con sonido 3D (HRTF) y reverb de sala.
    Sin archivos externos: todo se sintetiza con WebAudio. */
-let ctx = null, master, comp, sfxBus, musicBus, revIn, conv, noiseBuf, pinkBuf;
+let ctx = null, master, comp, sfxBus, musicBus, revIn, conv, noiseBuf, pinkBuf, scareBus;
 let vol = 0.8;
 const S = { amb: null, fan: null, buzz: null, phone: null, static_: null, heart: null, waltz: null, clown: null, nextAmb: 0, ready: false };
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
+function undrop() { S.dropped = false; if (master) { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(vol, ctx.currentTime, 0.05); } }
+function curve(k) { const n = 2048, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (3 + k) * x * 20 * (Math.PI / 180) / (Math.PI + k * Math.abs(x)); } return c; }
+/* Grito sintético: voces de diente de sierra con vibrato, saturadas y filtradas por formantes (suena a garganta, no a pitido) */
+function scream(o) {
+  if (!ctx) return; const t = ctx.currentTime + (o.delay || 0), dur = o.dur;
+  const out = ctx.createGain(); out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(o.g, t + (o.a || 0.015)); out.gain.setValueAtTime(o.g, t + dur * 0.55); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const ws = ctx.createWaveShaper(); ws.curve = curve(o.dist || 60); ws.oversample = '2x';
+  const sum = ctx.createGain(); sum.gain.value = 0.5;
+  for (let v = 0; v < (o.voices || 3); v++) {
+    const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.detune.value = (v - 1) * 18;
+    osc.frequency.setValueAtTime(o.f0, t); osc.frequency.exponentialRampToValueAtTime(o.f1, t + dur * 0.8);
+    const l = ctx.createOscillator(); l.frequency.value = (o.vib ? o.vib[0] : 9) + v; const lg = ctx.createGain(); lg.gain.value = o.vib ? o.vib[1] : 40; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + dur + 0.1);
+    osc.connect(ws); osc.start(t); osc.stop(t + dur + 0.1);
+  }
+  (o.formants || [[800, 6, 1], [1500, 8, 0.8], [2800, 10, 0.5]]).forEach(([f, q, gg], i) => {
+    const b = ctx.createBiquadFilter(); b.type = 'bandpass'; b.Q.value = q; b.frequency.setValueAtTime(f, t); b.frequency.linearRampToValueAtTime(f * (o.fs || 1.3), t + dur);
+    const g = ctx.createGain(); g.gain.value = gg; ws.connect(b); b.connect(g); g.connect(sum);
+  });
+  sum.connect(out); out.connect(scareBus);
+}
+function sub(f0, f1, dur, g, delay = 0) { tone({ f: f0, f2: f1, dur, g, a: 0.004, delay, bus: scareBus, wet: 0 }); }
+function nz(o) { noise(Object.assign({ bus: scareBus, wet: 0 }, o)); }
+function tn(o) { tone(Object.assign({ bus: scareBus, wet: 0 }, o)); }
 function init() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -14,6 +37,7 @@ function init() {
     ctx = new AC();
     comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.2;
     master = ctx.createGain(); master.gain.value = vol;
+    scareBus = ctx.createGain(); scareBus.gain.value = vol; scareBus.connect(ctx.destination);      // los sustos van por su propio canal (suena aunque se silencie el resto)
     comp.connect(master); master.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
     musicBus = ctx.createGain(); musicBus.gain.value = 0.9; musicBus.connect(comp);
@@ -36,6 +60,7 @@ function init() {
     S.ready = true;
   }
   if (ctx.state === 'suspended') ctx.resume();
+  if (S.dropped) undrop();
   return true;
 }
 
@@ -110,11 +135,11 @@ function bell(f, dur, g, pos, o = {}) {
   tone({ f: f * 5.4, dur: dur * 0.25, g: g * 0.15, pos, a: 0.002, wet: o.wet ?? 0.5, bus: o.bus, delay: o.delay, detune: o.detune });
 }
 // "Voz" fantasmal con formantes (susurros)
-function whisper(pos, dur = 1.4, g = 0.25, delay = 0) {
+function whisper(pos, dur = 1.4, g = 0.25, delay = 0, bus) {
   if (!ctx) return;
   const t = ctx.currentTime + delay;
   const s = ctx.createBufferSource(); s.buffer = pinkBuf; s.loop = true;
-  const r = route(pos, 0.6);
+  const r = route(pos, bus ? 0 : 0.6, bus);
   const out = ctx.createGain(); out.gain.setValueAtTime(0.0001, t);
   const syl = Math.floor(dur / 0.22);
   for (let i = 0; i < syl; i++) {
@@ -170,7 +195,7 @@ function clownUpdate() {
 /* ---------- API pública ---------- */
 export const Sfx = {
   init, listener,
-  setVolume(v) { vol = v; if (master) master.gain.value = v; },
+  setVolume(v) { vol = v; if (master && !S.dropped) master.gain.value = v; if (scareBus) scareBus.gain.value = v; },
   get time() { return ctx ? ctx.currentTime : 0; },
   get ready() { return S.ready; },
   suspend() { if (ctx) ctx.suspend(); },
@@ -340,16 +365,56 @@ export const Sfx = {
     }
   },
   whisper(pos, dur, g) { whisper(pos, dur, g); },
-  jumpscare(who) {                                // chillido + golpe grave específicos
+  /* silencio súbito antes del golpe: lo que mejor funciona para asustar es el contraste */
+  dropAll() {
+    if (!ctx) return; S.dropped = true; Sfx.shutUp();
+    master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.006);
+  },
+  undrop,
+  /* aviso previo (0.8–1.4 s): algo anda mal. Cada figura tiene su señal. */
+  preScare(who, dur = 1.0) {
     if (!ctx) return;
-    const L = [0, 0.0];
-    noise({ type: 'bandpass', f: 3200, f2: 600, q: 0.7, dur: 1.6, g: 1.0, a: 0.01, wet: 0.2 });
-    noise({ f: 800, dur: 1.5, g: 0.8, a: 0.01, wet: 0.2 });
-    tone({ f: 60, f2: 26, dur: 1.6, g: 0.9, type: 'sawtooth', lp: 200, wet: 0.1 });
-    if (who === 'condesa') { tone({ f: 700, f2: 2000, dur: 1.4, g: 0.35, type: 'sawtooth', lp: 4500, vib: [11, 90], wet: 0.2 }); tone({ f: 1050, f2: 2600, dur: 1.4, g: 0.25, type: 'sawtooth', lp: 4500, vib: [13, 90], wet: 0.2 }); }
-    else if (who === 'verdugo') { Sfx.chop([0, 1.4, -1]); tone({ f: 85, f2: 40, dur: 1.2, g: 0.8, type: 'square', lp: 400, wet: 0.2 }); noise({ type: 'highpass', f: 5000, dur: 0.6, g: 0.4 }); }
-    else if (who === 'nino') { tone({ f: 1500, f2: 900, dur: 1.2, g: 0.35, type: 'square', lp: 4000, vib: [20, 100], wet: 0.2 }); Sfx.childLaugh(null); }
-    else { Sfx.honk(null, 2); tone({ f: 500, f2: 1900, dur: 1.3, g: 0.3, type: 'sawtooth', lp: 4500, vib: [8, 120], wet: 0.2 }); Sfx.clownPop(null); }
+    tn({ f: 70, f2: 1400, dur, g: 0.32, type: 'sawtooth', lp: 3000, a: dur * 0.95 });                 // swell inverso
+    nz({ type: 'bandpass', f: 300, f2: 6000, q: 1.2, dur, g: 0.3, a: dur * 0.95 });
+    for (let i = 0; i < 3; i++) { sub(60, 38, 0.18, 0.6, 0.15 + i * (dur / 3.2)); }                       // latidos que se aceleran
+    if (who === 'condesa') { whisper([-1.5, 1.5, 0.3], 1.1, 0.6, 0.1, scareBus); bell(mtof(64), 3, 0.18, null, { bus: scareBus, wet: 0, detune: -90, delay: 0.2 }); }
+    else if (who === 'verdugo') { tn({ f: 70, f2: 50, dur: dur, g: 0.35, type: 'sawtooth', lp: 220, a: 0.2, vib: [30, 6] }); nz({ f: 160, dur: 0.3, g: 0.8, delay: dur * 0.5 }); }
+    else if (who === 'nino') { for (let i = 0; i < 4; i++) tn({ f: 900 - i * 80, f2: 600, dur: 0.12, g: 0.1, lp: 2400, delay: 0.1 + i * 0.16, vib: [14, 20] }); }
+    else { tn({ f: 300, dur: 0.5, g: 0.2, type: 'sawtooth', lp: 1000, delay: 0.1, vib: [6, 14], detune: -300 }); tn({ f: 1500, f2: 900, dur: 0.08, g: 0.12, delay: 0.55 }); }
+  },
+  jumpscare(who) {
+    if (!ctx) return;
+    // capa común: golpe sub-grave, chasquido de ruido, grito saturado y chirrido metálico
+    sub(58, 24, 1.8, 1.0); sub(110, 40, 0.5, 0.8);
+    nz({ type: 'highpass', f: 1800, dur: 0.18, g: 1.0, a: 0.002 }); nz({ f: 900, f2: 120, dur: 1.4, g: 0.9, a: 0.002 });
+    nz({ type: 'bandpass', f: 4200, f2: 700, q: 0.9, dur: 1.6, g: 0.55, a: 0.003 });
+    [1830, 2410, 3170, 4550].forEach((f, i) => tn({ f, f2: f * 0.42, dur: 1.3, g: 0.07, type: i % 2 ? 'square' : 'sawtooth', lp: 7000, a: 0.003 }));
+    if (who === 'condesa') {                                                                                    // chillido de soprano + cristales
+      scream({ f0: 520, f1: 1700, dur: 1.8, g: 0.55, vib: [6, 90], fs: 1.5, formants: [[900, 7, 1], [1700, 9, 0.9], [3100, 12, 0.6]], voices: 4, dist: 90 });
+      scream({ f0: 780, f1: 2300, dur: 1.5, g: 0.25, vib: [8, 110], fs: 1.6, delay: 0.05, voices: 2, dist: 60 });
+      for (let i = 0; i < 14; i++) tn({ f: 2500 + Math.random() * 5000, dur: 0.4, g: 0.1, delay: i * 0.025 });
+    } else if (who === 'verdugo') {                                                                             // rugido grave + hachazos
+      scream({ f0: 95, f1: 160, dur: 1.7, g: 0.8, vib: [14, 12], fs: 0.8, formants: [[420, 5, 1], [900, 6, 0.7], [1900, 8, 0.4]], voices: 4, dist: 110 });
+      nz({ f: 900, f2: 120, dur: 0.4, g: 1, delay: 0.12 }); sub(95, 40, 0.5, 0.9, 0.12); nz({ f: 700, f2: 90, dur: 0.5, g: 1, delay: 0.5 }); sub(90, 30, 0.5, 1.0, 0.5); nz({ type: 'highpass', f: 3500, dur: 0.2, g: 0.6, delay: 0.5 });
+    } else if (who === 'nino') {                                                                                // grito agudo de niño + risa invertida
+      scream({ f0: 1100, f1: 2500, dur: 1.6, g: 0.5, vib: [11, 120], fs: 1.25, formants: [[1000, 8, 1], [2300, 10, 0.9], [3600, 12, 0.6]], voices: 3, dist: 70 });
+      for (let i = 0; i < 6; i++) tn({ f: 500 + (i % 2) * 260, f2: 350, dur: 0.16, g: 0.2, lp: 2600, delay: 0.5 + i * 0.13, vib: [15, 30] });
+    } else {                                                                                                    // payaso: bocinas rotas + risa + calíope
+      for (let i = 0; i < 4; i++) { tn({ f: 300 - i * 20, dur: 0.22, g: 0.5, type: 'sawtooth', lp: 1400, delay: i * 0.2, vib: [20, 25], detune: -i * 40 }); tn({ f: 255, dur: 0.22, g: 0.35, type: 'square', lp: 900, delay: i * 0.2 }); }
+      scream({ f0: 380, f1: 900, dur: 1.7, g: 0.5, vib: [13, 150], fs: 1.3, voices: 4, dist: 100 });
+      for (let i = 0; i < 9; i++) tn({ f: mtof(72 + [0, 1, 6, 7, 3, 9, 2, 8, 5][i]), dur: 0.14, g: 0.12, type: 'square', lp: 3000, delay: 0.1 + i * 0.1 });
+    }
+  },
+  /* segundo golpe (cuando crees que ha terminado) */
+  jumpscare2(who) {
+    if (!ctx) return;
+    sub(80, 26, 0.9, 1.0); nz({ type: 'highpass', f: 2200, dur: 0.14, g: 1.0, a: 0.002 }); nz({ f: 1200, f2: 150, dur: 0.7, g: 0.8, a: 0.002 });
+    scream({ f0: who === 'verdugo' ? 120 : 700, f1: who === 'verdugo' ? 220 : 2100, dur: 0.8, g: 0.6, vib: [10, 80], voices: 3, dist: 100 });
+  },
+  /* corte a negro: zumbido de oídos y retumbo lejano */
+  tinnitus() {
+    if (!ctx) return;
+    tn({ f: 4300, dur: 5, g: 0.1, a: 0.5 }); tn({ f: 5600, dur: 4, g: 0.04, a: 0.8 }); tn({ f: 38, dur: 5, g: 0.25, a: 1.2 });
   },
   powerDown() { tone({ f: 220, f2: 28, dur: 1.6, g: 0.5, type: 'sawtooth', lp: 400, wet: 0.3 }); noise({ f: 500, f2: 50, dur: 1.5, g: 0.5, wet: 0.3 }); },
   chime6() { [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => bell(f, 2.4, 0.2, null, { delay: i * 0.34, wet: 0.7 })); setTimeout(() => { for (let i = 0; i < 14; i++) noise({ type: 'bandpass', f: rnd(1500, 3500), q: 4, dur: 0.15, g: 0.08, delay: rnd(0, 1.8), wet: 0.4 }); }, 1500); },

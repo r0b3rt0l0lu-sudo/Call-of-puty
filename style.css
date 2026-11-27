@@ -77,7 +77,7 @@ kbd { font:inherit; font-size:11px; opacity:.6; border:1px solid currentColor; p
 .cred { line-height:1.7; font-size:17px; } .cred b { color:var(--gold); }
 #nightCard { background:#000; } #ncN { font-size:34px; letter-spacing:6px; } #ncT { font-size:64px; margin-top:12px; font-weight:bold; } #ncS { margin-top:14px; font-size:20px; letter-spacing:6px; color:var(--gold); text-transform:uppercase; }
 #win { background:#000; } #winTime { font-size:clamp(60px,14vw,150px); font-weight:bold; letter-spacing:6px; animation:rise 2.4s ease-out; } @keyframes rise { from { transform:translateY(40px); opacity:0; } to { transform:none; opacity:1; } }
-#gameOver { background:#000; } #gameOver p { margin:0; opacity:.8; } .hintTxt { max-width:560px; color:#ffd9a0; line-height:1.5; margin-bottom:10px !important; font-size:15px; }
+#gameOver { background:#000; animation:goIn 2.2s ease-out; } @keyframes goIn { from { opacity:0; } to { opacity:1; } } #gameOver p { margin:0; opacity:.8; } .hintTxt { max-width:560px; color:#ffd9a0; line-height:1.5; margin-bottom:10px !important; font-size:15px; }
 .story { max-width:620px; line-height:1.8; font-size:18px; white-space:pre-wrap; font-family:inherit; opacity:.9; } #ending { background:#050505; } #choice { background:rgba(0,0,0,.88); }
 #resume { background:rgba(0,0,0,.6); cursor:pointer; }
 
