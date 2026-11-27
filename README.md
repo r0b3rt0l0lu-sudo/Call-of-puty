@@ -33,7 +33,7 @@ Las cámaras **no se pueden usar a la vez que las puertas/linternas**: hay que l
 | **El Verdugo** | Rompe la puerta a hachazos (cerrarla no sirve) y registra la garita | Arrastre de metal, hachazos, respiración | Esconderte en la taquilla y aguantar el aire solo cuando esté cerca |
 
 Además hay **estatuas de adorno** (ojos apagados), **sustos falsos** que no matan (golpes, susurros, teléfono fantasma…)
-y la **linterna**, que derrite al Payaso en la puerta pero gasta energía. Si te quedas sin energía, la Condesa te encuentra.
+**sonidos fantasma** (algunos son señuelos que imitan una pista real) y la **linterna**, que derrite al Payaso en la puerta pero gasta energía. Si te quedas sin energía, la Condesa te encuentra.
 La dificultad sube cada noche (cada figura se activa en una noche distinta: Condesa+Payaso → Niño → Verdugo).
 
 ## Historia y finales

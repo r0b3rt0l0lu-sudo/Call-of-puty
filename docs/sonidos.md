@@ -30,3 +30,15 @@ una cara que parpadea en el monitor y la lámpara que muere un instante. Cada no
 - **Apagón**: el vals de la caja suena lento y lúgubre; luego silencio; tacones… y la Condesa.
 - **6 AM**: campanadas y vítores lejanos.
 - **Finales**: tres temas distintos (triste, oscuro y esperanzador) hechos con campanas y pads.
+
+## Sonidos fantasma (aparecen de golpe y pueden significar algo… o nada)
+Un director aparte lanza sonidos con posición 3D (a veces tras apagar un instante el ambiente para que el susto
+caiga sobre el silencio). Desde la noche 2 pueden llegar en racha. Nunca matan, pero te hacen dudar:
+
+- **Sin significado:** susurro pegado a la oreja, respiración a tu lado, portazo lejano, tic-tac de un reloj que no existe,
+  caja de música ajena, alguien que corre al otro lado de la pared, nana tarareada, llanto, metal arrastrado por el techo,
+  risa demasiado cerca, el archivador que se abre solo, una bombilla que revienta, voz grave sin cuerpo, grito lejano,
+  risa al revés, golpes dentro de la taquilla y unas campanadas falsas de las 6 AM.
+- **Señuelos (imitan una pista real):** tacones que se acercan y se paran, el vals que se arrastra un segundo,
+  una bocina en una galería, el Niño contando «uno, dos, tres…», arrastre de metal y un hachazo sin Verdugo.
+  Si reaccionas a todos gastarás energía y tiempo; si ignoras uno que es real, te llevas el susto de verdad.

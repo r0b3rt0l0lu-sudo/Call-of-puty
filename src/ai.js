@@ -40,7 +40,7 @@ export function createAI(X) {
       else if (G.t > d.grace) G.boxCharge = Math.max(0, G.boxCharge - dt * hf() / d.decay);
     }
     const c = G.boxCharge; G.boxOn = c > 0.001;
-    Sfx.waltzSet(c); Sfx.waltzPause(c <= 0.001);
+    Sfx.waltzSet(G.warble > 0 ? 0.22 : c); Sfx.waltzPause(c <= 0.001);
     const st = c >= 0.55 ? 0 : c >= 0.32 ? 1 : c >= 0.12 ? 2 : 3;
     if (st !== C.stage) {
       const up = st > C.stage; C.stage = st; condesaTo(st);
@@ -322,11 +322,61 @@ export function createAI(X) {
     G.lastEvent = G.t; Dr.next = rnd(...diff().scare) / (1 + (G.t / X.HOUR) * 0.04);
   }
 
+
+  /* ================= sonidos fantasma: de repente, sin avisar; algunos significan algo y otros no ================= */
+  const PH = { next: 0, last: '' };
+  const earPos = () => { const yaw = P.yaw, side = Math.random() < 0.5 ? -1 : 1; return [P.pos.x + Math.cos(yaw) * side * 0.4, 1.55, P.pos.z - Math.sin(yaw) * side * 0.4]; };
+  const nearPos = (r, y = 1.4) => { const a = Math.random() * 6.283; return [P.pos.x + Math.cos(a) * r, y, P.pos.z + Math.sin(a) * r]; };
+  const calm = () => A.verdugo.state === 'off' || A.verdugo.state === 'wait';
+  const PHANTOMS = [
+    // ---- puros sustos (no significan nada)
+    { id: 'ear_whisper', n: 1, w: 3, run() { Sfx.whisper(earPos(), 1.5, 0.6); X.sub('(un susurro pegado a tu oreja)', 2.5); } },
+    { id: 'breath', n: 1, w: 2, run() { Sfx.breathe(earPos()); X.sub('(alguien respira a tu lado)', 3); } },
+    { id: 'slam', n: 1, w: 3, run() { Sfx.slamFar(nearPos(11, 1.2)); X.sub('(un portazo, lejos)', 2.5); } },
+    { id: 'tick', n: 1, w: 1.5, run() { Sfx.clockTick(nearPos(3), 4); X.sub('(un reloj que no existe)', 3); } },
+    { id: 'music_ghost', n: 1, w: 2, run() { Sfx.musicGhost(nearPos(5)); X.sub('(una caja de música… que no es la tuya)', 3.5); } },
+    { id: 'run_by', n: 2, w: 2, run() { const f = Math.random() < 0.5; Sfx.runBy(f ? [-7, 0, -1.6] : [7, 0, -1.6], f ? [7, 0, -1.6] : [-7, 0, -1.6]); X.sub('(pasos veloces al otro lado de la pared)', 3); } },
+    { id: 'hum', n: 2, w: 2, run() { Sfx.hum(nearPos(8)); X.sub('(alguien tararea una nana)', 4); } },
+    { id: 'cry', n: 2, w: 1.5, run() { Sfx.cry(nearPos(7)); X.sub('(un niño llora)', 3.5); } },
+    { id: 'scrape', n: 2, w: 2, run() { Sfx.scrape([P.pos.x + (Math.random() - 0.5) * 3, 3.6, P.pos.z - 1 - Math.random() * 2], 3); X.sub('(algo arrastra metal por el techo)', 3); } },
+    { id: 'laugh_close', n: 2, w: 2, run() { const e = earPos(); Sfx.childLaugh(e); Sfx.sting('low', e); X.sub('(una risa infantil, demasiado cerca)', 3); } },
+    { id: 'drawer', n: 2, w: 1, run() { Sfx.drawer([-0.45, 1.1, -1.5]); X.sub('(el archivador se abre solo)', 3); } },
+    { id: 'bulb', n: 2, w: 1, run() { Sfx.bulbPop([0, 3, 0.6]); W.L.lamp.intensity = 0.1; Dr.restore.push([0.5, () => { W.L.lamp.intensity = 2.0; }]); } },
+    { id: 'voice', n: 2, w: 1, run() { const t = ['Detrás de ti.', 'No mires.', 'Sal de aquí.', 'Ya vienen.', 'Duerme.'][Math.floor(Math.random() * 5)]; Sfx.say(t, { pitch: 0.25, rate: 0.55, vol: 0.45 }); X.sub(`(una voz grave, sin cuerpo: «${t}»)`, 3.5); } },
+    { id: 'scream_far', n: 3, w: 2, run() { Sfx.distantScream(nearPos(14, 1.6)); X.sub('(un grito, a lo lejos)', 3); } },
+    { id: 'lullaby', n: 3, w: 1, run() { Sfx.creepyLullaby(nearPos(6)); X.sub('(una nana desafinada)', 4.5); } },
+    { id: 'reverse', n: 3, w: 1.5, run() { Sfx.reverseLaugh(nearPos(2.5)); X.sub('(una risa que suena al revés)', 3); } },
+    { id: 'knock_locker', n: 3, w: 1, ok: () => !G.hidden, run() { Sfx.bang([2.3, 1.1, -1.3], 2); X.sub('(golpes dentro de la taquilla)', 3); } },
+    { id: 'false_chime', n: 3, w: 0.7, ok: () => G.t < X.HOUR * 4.5, run() { Sfx.falseChime(); X.sub('(campanadas… ¿ya son las seis?)', 5); } },
+    // ---- señuelos: imitan una pista real y no significan nada (te hacen perder tiempo y energía)
+    { id: 'fake_heels', n: 1, w: 2, ok: () => G.boxCharge > 0.5, run() { Sfx.heelRun([-4.4, 0.1, -9], 6, 0.38, 1); X.sub('(tacones que se acercan… y se paran)', 3.5); } },
+    { id: 'fake_warble', n: 1, w: 1.5, ok: () => G.boxCharge > 0.6 && !G.powerOut, run() { G.warble = 2.4; X.sub('(el vals se arrastra un instante)', 3); } },
+    { id: 'fake_honk', n: 2, w: 2, ok: () => A.payaso.state === 'vitrine' && A.payaso.lock > 0.5, run() { Sfx.honk([Math.random() < 0.5 ? -4.6 : 4.6, 1.2, -8], 1); X.sub('(una bocina, en una galería)', 3); } },
+    { id: 'fake_count', n: 2, w: 1.5, ok: () => ['idle', 'cool'].includes(A.nino.phase), run() { Sfx.say('uno… dos… tres…', { pitch: 1.9, rate: 0.85, vol: 0.4 }); X.sub('Niño: «…uno… dos… tres…»', 3); } },
+    { id: 'fake_drag', n: 3, w: 2, ok: calm, run() { const x = Math.random() < 0.5 ? -4.6 : 4.6; Sfx.drag([x, 0.3, -7], 1); Sfx.stepHeavy([x, 0.1, -6.5], 1); X.sub('(arrastre de metal… ¿o no?)', 3); } },
+    { id: 'fake_chop', n: 3, w: 1.5, ok: calm, run() { Sfx.chop([Math.random() < 0.5 ? -3.6 : 3.6, 1.2, 0]); X.sub('(un hachazo, en alguna puerta)', 3); } },
+  ];
+  function phantomDirector(dt) {
+    G.warble = Math.max(0, (G.warble || 0) - dt);
+    PH.next -= dt; if (PH.next > 0 || G.powerOut || G.t < diff().grace) return;
+    const crit = ['chop', 'enter', 'leave', 'found'].includes(A.verdugo.state) || A.nino.phase === 'chase' || ['run', 'door', 'dazzled'].includes(A.payaso.state);
+    if (crit) { PH.next = 4; return; }
+    const pool = PHANTOMS.filter(e => e.n <= G.night && e.id !== PH.last && (!e.ok || e.ok()));
+    const tot = pool.reduce((a, e) => a + e.w, 0); let r = Math.random() * tot, ev = pool[0];
+    for (const e of pool) { r -= e.w; if (r <= 0) { ev = e; break; } }
+    PH.last = ev.id;
+    const lead = Math.random() < 0.4 ? 1.3 : 0;                      // a veces el ambiente se apaga un instante antes: silencio y… ¡eso!
+    if (lead) { Sfx.hush(lead + 1.2); Dr.restore.push([lead, () => ev.run()]); } else ev.run();
+    const g = { 1: [32, 55], 2: [26, 46], 3: [20, 38], 4: [15, 30], 5: [11, 22], 6: [8, 16] }[Math.min(G.night, 6)];
+    PH.next = Math.random() < 0.25 ? rnd(2.5, 5) : rnd(g[0], g[1]);   // a veces, otro seguido
+  }
+  A.phantoms = PHANTOMS; A.phantomRun = id => PHANTOMS.find(e => e.id === id).run();
+
   /* ================= API ================= */
-  A.reset = () => { resetCondesa(); resetPayaso(); resetNino(); resetVerdugo(); Dr.next = diff().grace + 12; Dr.busy = 0; Dr.restore.length = 0; decoys.forEach(decoyHome); W.repairDoors(); X.threat.condesa = X.threat.payaso = X.threat.nino = X.threat.verdugo = 0; };
+  A.reset = () => { PH.next = diff().grace + 18; G.warble = 0; resetCondesa(); resetPayaso(); resetNino(); resetVerdugo(); Dr.next = diff().grace + 12; Dr.busy = 0; Dr.restore.length = 0; decoys.forEach(decoyHome); W.repairDoors(); X.threat.condesa = X.threat.payaso = X.threat.nino = X.threat.verdugo = 0; };
   A.update = dt => {
     if (G.powerOut) return;
-    updateCondesa(dt); updatePayaso(dt); updateNino(dt); updateVerdugo(dt); scareDirector(dt);
+    updateCondesa(dt); updatePayaso(dt); updateNino(dt); updateVerdugo(dt); scareDirector(dt); phantomDirector(dt);
   };
   A.furnaceLit = () => G.furnace >= 1;
   return A;

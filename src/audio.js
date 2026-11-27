@@ -25,7 +25,8 @@ function scream(o) {
     const b = ctx.createBiquadFilter(); b.type = 'bandpass'; b.Q.value = q; b.frequency.setValueAtTime(f, t); b.frequency.linearRampToValueAtTime(f * (o.fs || 1.3), t + dur);
     const g = ctx.createGain(); g.gain.value = gg; ws.connect(b); b.connect(g); g.connect(sum);
   });
-  sum.connect(out); out.connect(scareBus);
+  sum.connect(out);
+  if (o.pos) { const r = route(o.pos, o.wet ?? 0.6, sfxBus); out.connect(r.inp); } else out.connect(scareBus);
 }
 function sub(f0, f1, dur, g, delay = 0) { tone({ f: f0, f2: f1, dur, g, a: 0.004, delay, bus: scareBus, wet: 0 }); }
 function nz(o) { noise(Object.assign({ bus: scareBus, wet: 0 }, o)); }
@@ -365,6 +366,26 @@ export const Sfx = {
     }
   },
   whisper(pos, dur, g) { whisper(pos, dur, g); },
+  hush(sec = 1.6) {                                              // el ambiente se apaga un momento (silencio antes del susto)
+    if (!ctx || !S.amb) return; const g = S.amb.g.gain; g.cancelScheduledValues(ctx.currentTime); g.setTargetAtTime(0.0001, ctx.currentTime, 0.05); g.setTargetAtTime(0.5, ctx.currentTime + sec, 0.6);
+  },
+  /* ====== sonidos fantasma: aparecen de golpe y pueden significar algo… o nada ====== */
+  runBy(from, to, n = 12, gap = 0.1, vol = 1) {                 // alguien corre a través de las paredes
+    for (let i = 0; i < n; i++) { const k = i / (n - 1), pos = [from[0] + (to[0] - from[0]) * k, 0.1, from[2] + (to[2] - from[2]) * k]; noise({ f: 240, dur: 0.12, g: 0.7 * vol, pos, wet: 0.4, delay: i * gap }); tone({ f: 80, f2: 45, dur: 0.12, g: 0.6 * vol, pos, wet: 0.4, delay: i * gap, type: 'triangle' }); }
+  },
+  breathe(pos) { noise({ type: 'bandpass', f: 800, f2: 1700, q: 1.4, dur: 0.9, g: 0.55, a: 0.4, pos, wet: 0.2, pink: true }); noise({ type: 'bandpass', f: 1700, f2: 600, q: 1.4, dur: 1.2, g: 0.5, a: 0.1, pos, wet: 0.2, pink: true, delay: 1.0 }); },
+  hum(pos) { [64, 67, 71, 69, 67, 64, 62, 64].forEach((m, i) => tone({ f: mtof(m + 12), dur: 0.7, g: 0.07, lp: 1400, pos, wet: 0.8, a: 0.1, delay: i * 0.62, vib: [5.5, 7] })); },
+  cry(pos) { for (let i = 0; i < 5; i++) tone({ f: 560, f2: 380, dur: 0.38, g: 0.1, lp: 1800, pos, wet: 0.8, a: 0.05, delay: i * 0.55 + Math.random() * 0.1, vib: [8, 18] }); },
+  clockTick(pos, dur = 4) { for (let i = 0; i < dur * 2; i++) { noise({ type: 'highpass', f: 2500, dur: 0.03, g: 0.5, pos, wet: 0.5, delay: i * 0.5 }); tone({ f: i % 2 ? 1500 : 1800, dur: 0.04, g: 0.2, pos, wet: 0.5, delay: i * 0.5 }); } },
+  musicGhost(pos) { [76, 81, 84, 86, 84, 81].forEach((m, i) => bell(mtof(m), 1.6, 0.12, pos, { delay: i * 0.42, wet: 0.9, detune: -70 - i * 8 })); },
+  drawer(pos) { noise({ type: 'bandpass', f: 900, f2: 300, q: 6, dur: 0.7, g: 0.3, a: 0.2, pos, wet: 0.4, pink: true }); noise({ f: 200, dur: 0.2, g: 0.7, pos, delay: 0.7 }); },
+  bulbPop(pos) { noise({ type: 'highpass', f: 3000, dur: 0.1, g: 0.9, pos, wet: 0.3 }); tone({ f: 120, f2: 60, dur: 0.15, g: 0.5, pos }); },
+  slamFar(pos) { noise({ f: 160, dur: 0.9, g: 1.0, pos, wet: 0.9 }); tone({ f: 55, f2: 30, dur: 1.0, g: 0.9, type: 'triangle', pos, wet: 0.9 }); },
+  scrape(pos, dur = 2.5) { noise({ type: 'bandpass', f: 1200, f2: 380, q: 4, dur, g: 0.3, a: 0.5, pos, wet: 0.6, pink: true }); tone({ f: 1700, f2: 600, dur: dur * 0.8, g: 0.04, type: 'sawtooth', lp: 2500, pos, wet: 0.6, a: 0.5 }); },
+  distantScream(pos) { scream({ f0: 600, f1: 1900, dur: 1.5, g: 0.3, vib: [7, 80], pos, wet: 0.9, voices: 3, dist: 70, fs: 1.4 }); },
+  reverseLaugh(pos) { for (let i = 0; i < 7; i++) tone({ f: 300 + i * 28, f2: 400 + i * 28, dur: 0.15, g: 0.03 + i * 0.03, lp: 1800, pos, wet: 0.7, a: 0.14, delay: i * 0.16, vib: [11, 20] }); },
+  falseChime() { [523.25, 659.25, 783.99].forEach((f, i) => bell(f, 3.2, 0.16, null, { delay: i * 0.4, wet: 0.9, detune: -45 - i * 30 })); tone({ f: 70, f2: 40, dur: 2.5, g: 0.3, delay: 1.2, lp: 200 }); },
+  creepyLullaby(pos) { [69, 72, 76, 72, 69, 67, 69, 64].forEach((m, i) => bell(mtof(m), 1.8, 0.1, pos, { delay: i * 0.55, wet: 0.95, detune: (i % 2) * -60 })); },
   /* silencio súbito antes del golpe: lo que mejor funciona para asustar es el contraste */
   dropAll() {
     if (!ctx) return; S.dropped = true; Sfx.shutUp();
