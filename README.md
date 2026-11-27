@@ -36,6 +36,11 @@ Además hay **estatuas de adorno** (ojos apagados), **sustos falsos** que no mat
 **sonidos fantasma** (algunos son señuelos que imitan una pista real) y la **linterna**, que derrite al Payaso en la puerta pero gasta energía. Si te quedas sin energía, la Condesa te encuentra.
 La dificultad sube cada noche (cada figura se activa en una noche distinta: Condesa+Payaso → Niño → Verdugo).
 
+**Estatuas que caminan** (desde la noche 3): algunas de las estatuas de adorno avanzan hacia tus puertas, pero solo cuando no las miras
+(ni tú ni una cámara). Si una llega, te gasta energía hasta que la iluminas con la linterna de ese lado y se derrite.
+
+**Logros**: 19 (menú → Logros, tecla `L`), con avisos en pantalla al desbloquearlos.
+
 ## Historia y finales
 Cada noche aparece una **nota oculta** en la garita (5 en total) y recibes una llamada que va revelando la historia.
 Tras las noches 1–3 hay cinemáticas de «recuerdo». Tres finales:

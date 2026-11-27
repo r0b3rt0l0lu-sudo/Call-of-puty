@@ -49,7 +49,7 @@ export class Char {
         }
       });
       eyes.forEach(m => {
-        m.userData.base = m.emissiveIntensity;
+        m.userData.base = m.emissiveIntensity; m.userData.cC = m.color.clone(); m.userData.eC = m.emissive.clone();
         if (this.decoy) { m.color.set(0x14110c); m.emissive.set(0x000000); m.emissiveIntensity = 0; }
       });
       const mixer = new THREE.AnimationMixer(model);
@@ -82,6 +82,9 @@ export class Char {
   stopAll() { this.cur.mixer.stopAllAction(); this.clip = null; }
   freezePose(name = 'Idle', t = 0) { this.stopAll(); const a = this.play(name, { fade: 0 }); a.time = t; a.paused = true; this.cur.mixer.update(0); }
   update(dt) { this.cur.mixer.update(dt); }
+  glow(on) {                                         // estatuas de adorno: apagar/encender los ojos de verdad
+    this.cur.eyes.forEach(m => { if (on) { m.color.copy(m.userData.cC); m.emissive.copy(m.userData.eC); } else { m.color.set(0x14110c); m.emissive.set(0x000000); } });
+  }
   setEyes(k) { this.cur.eyes.forEach(m => { m.emissiveIntensity = (m.userData.base ?? 1) * k; }); }
   place(x, y, z, ry = 0) { this.group.position.set(x, y, z); this.group.rotation.set(0, ry + this.faceOff, 0); }
   faceToward(x, z, withFace = true) { this.group.rotation.y = Math.atan2(x - this.group.position.x, z - this.group.position.z) + (withFace ? this.faceOff : 0); }

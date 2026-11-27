@@ -75,7 +75,7 @@ export function createAI(X) {
   function payasoRun() {
     K.state = 'run'; K.side = (G.night <= 2) ? 'L' : (Math.random() < 0.5 ? 'L' : 'R');
     K.path = PATH[K.side]; K.i = 0; K.total = plen(K.path); K.honked = false; K.stepT = 0;
-    Sfx.clownPop([-9.5, 1.2, -14.7]); Sfx.clownSet(0); W.setVitrine(1);
+    X.stats.clownRuns++; Sfx.clownPop([-9.5, 1.2, -14.7]); Sfx.clownSet(0); W.setVitrine(1);
     const a = actors.payaso; a.idle = 'Idle'; a.goTo(K.path[0], K.total / diff().runT, null, 'Run'); a.char.visible = true;
     X.hint('¡Se soltó el Payaso! Escucha la bocina: cierra esa puerta.', 'clownrun', 5);
   }
@@ -108,7 +108,7 @@ export function createAI(X) {
       if (K.t >= 1.7) {
         const closed = W.doorClosed[K.side] && !W.doorBroken[K.side], lit = G.light[K.side];
         if (closed) { Sfx.bang(doorPos(K.side), 3); Sfx.honk(doorPos(K.side), 1); payasoBack(0.6); }
-        else if (lit) { a.char.play('Melt', { once: true }); Sfx.melt(doorPos(K.side)); G.power = Math.max(0, G.power - 3); K.state = 'dazzled'; K.t = 0; X.hint('La luz derrite al Payaso… pero gastó energía.', 'dazzle', 3); }
+        else if (lit) { X.event('melt'); a.char.play('Melt', { once: true }); Sfx.melt(doorPos(K.side)); G.power = Math.max(0, G.power - 3); K.state = 'dazzled'; K.t = 0; X.hint('La luz derrite al Payaso… pero gastó energía.', 'dazzle', 3); }
         else X.jumpscare('payaso');
       }
     } else if (K.state === 'dazzled') {
@@ -133,7 +133,7 @@ export function createAI(X) {
   A.found = camIdx => {
     if (N.phase !== 'count') { Sfx.buzzer(); return false; }
     if (camIdx === N.spot) {
-      Sfx.found([0, 1.2, -6]); X.sub('Niño: «¡Me encontraste! ¡Otra vez!»', 3); N.phase = 'cool'; N.timer = rnd(...diff().ninoGap); ninoHide();
+      X.event('found'); Sfx.found([0, 1.2, -6]); X.sub('Niño: «¡Me encontraste! ¡Otra vez!»', 3); N.phase = 'cool'; N.timer = rnd(...diff().ninoGap); ninoHide();
       Sfx.shutUp(); return true;
     }
     Sfx.buzzer(); N.step = Math.max(0, N.step - 0.0); N.n = Math.min(diff().count, N.n + 2); X.sub('Ahí no está… (el Niño sigue contando)', 2); return false;
@@ -217,7 +217,7 @@ export function createAI(X) {
     Sfx.sting('metal', [9.6, 1.2, -14.2]); Sfx.growl([9.6, 1.2, -14.2]);
     X.hint('Arrastre de metal… El Verdugo viene. Prepárate para esconderte en la taquilla.', 'verd', 6);
   }
-  function endVerdugo() { V.state = 'wait'; V.t = diff().vGap * rnd(0.8, 1.2); actors.verdugo.char.visible = false; G.holding = false; X.threat.verdugo = 0; }
+  function endVerdugo() { if (V.state === 'leave') X.event('verdugoPassed'); V.state = 'wait'; V.t = diff().vGap * rnd(0.8, 1.2); actors.verdugo.char.visible = false; G.holding = false; X.threat.verdugo = 0; }
   function updateVerdugoMain(dt) {
     const a = actors.verdugo, d = diff(), g = a.char.group.position;
     // respiración (se usa solo cuando estás en la taquilla)
@@ -293,23 +293,24 @@ export function createAI(X) {
   /* ================= director de sustos falsos (no letales) ================= */
   const Dr = { next: 0, busy: 0, restore: [] };
   A.director = Dr;
+  const pickDecoyIdx = () => { const free = decoys.map((d, i) => i).filter(i => !decoys[i].walker); return free[Math.floor(Math.random() * free.length)]; };
   const decoyAt = (i, x, z, ry) => { const d = decoys[i]; d.home = d.home || d.char.group.position.clone(); d.homeRy = d.homeRy ?? d.char.group.rotation.y; d.char.group.position.set(x, 0, z); d.char.group.rotation.y = ry; return d; };
-  const decoyHome = d => { if (d.home) { d.char.group.position.copy(d.home); d.char.group.rotation.y = d.homeRy; } d.char.setEyes(0); };
+  const decoyHome = d => { if (d.home) { d.char.group.position.copy(d.home); d.char.group.rotation.y = d.homeRy; } d.char.glow(false); d.char.setEyes(0); };
   const behind = () => { const f = X.forward(); return [P.pos.x - f.x * 1.6, 1.4, P.pos.z - f.z * 1.6]; };
   const EVENTS = [
     { id: 'knock', n: 1, run() { const s = Math.random() < 0.5 ? 'L' : 'R'; Sfx.bang(doorPos(s), 3); X.sub('(golpes en la puerta)', 2.5); Dr.busy = 2; } },
     { id: 'whisper', n: 1, run() { Sfx.whisper(behind(), 1.8, 0.45); X.sub('(un susurro a tu espalda)', 2.5); Dr.busy = 2; } },
     { id: 'bell', n: 1, run() { Sfx.sting('bell', [rnd(-6, 6), 3, -12]); X.sub('(una campana, lejos)', 2.5); Dr.busy = 3; } },
     { id: 'fan', n: 1, run() { Sfx.fan(false); W.fan.on = false; X.sub('(el ventilador se detiene)', 2.5); Dr.busy = 5; setTimeout(() => { Sfx.sting('thud', [0, 1.2, -1.8]); setTimeout(() => { if (G.state === 'play' && !G.powerOut) { Sfx.fan(true); W.fan.on = true; } }, 1500); }, 3200); } },
-    { id: 'eyes', n: 1, run() { const side = Math.random() < 0.5 ? -1 : 1, d = decoyAt(Math.floor(rnd(0, decoys.length)), side * 4.2, 0, side < 0 ? Math.PI / 2 : -Math.PI / 2); d.char.setEyes(1); W.L.lamp.intensity = 0.3; Sfx.sting('low', [side * 4.2, 1.5, 0]); Dr.busy = 2; Dr.restore.push([1.0, () => { decoyHome(d); }]); } },
+    { id: 'eyes', n: 1, run() { const side = Math.random() < 0.5 ? -1 : 1, d = decoyAt(pickDecoyIdx(), side * 4.2, 0, side < 0 ? Math.PI / 2 : -Math.PI / 2); d.char.glow(true); d.char.setEyes(1); W.L.lamp.intensity = 0.3; Sfx.sting('low', [side * 4.2, 1.5, 0]); Dr.busy = 2; Dr.restore.push([1.0, () => { decoyHome(d); }]); } },
     { id: 'laugh', n: 2, run() { Sfx.childLaugh([rnd(-8, 8), 1.2, -rnd(6, 14)]); X.sub('(risas infantiles)', 2.5); Dr.busy = 2; } },
     { id: 'ceiling', n: 2, run() { for (let i = 0; i < 4; i++) setTimeout(() => Sfx.sting('thud', [(i - 1.5) * 1.2, 4.5, -0.3 * i]), i * 650); X.sub('(pasos sobre el techo)', 3); Dr.busy = 4; } },
-    { id: 'shadow', n: 2, run() { const side = Math.random() < 0.5 ? -1 : 1, d = decoyAt(Math.floor(rnd(0, decoys.length)), side * 4.0, 0.2, side < 0 ? Math.PI / 2 : -Math.PI / 2); W.L.lamp.intensity = 0; Sfx.sting('static', [side * 3.8, 1.2, 0]); Dr.busy = 1.5; Dr.restore.push([0.3, () => { decoyHome(d); W.L.lamp.intensity = 2.0; }]); } },
+    { id: 'shadow', n: 2, run() { const side = Math.random() < 0.5 ? -1 : 1, d = decoyAt(pickDecoyIdx(), side * 4.0, 0.2, side < 0 ? Math.PI / 2 : -Math.PI / 2); W.L.lamp.intensity = 0; Sfx.sting('static', [side * 3.8, 1.2, 0]); Dr.busy = 1.5; Dr.restore.push([0.3, () => { decoyHome(d); W.L.lamp.intensity = 2.0; }]); } },
     { id: 'phone', n: 2, run() { if (G.phoneRinging || G.cam) return false; G.ghostCall = true; G.phoneRinging = true; Sfx.phoneRing(true); Dr.busy = 14; Dr.restore.push([13, () => { if (G.ghostCall) { G.ghostCall = false; G.phoneRinging = false; Sfx.phoneRing(false); } }]); } },
     { id: 'face', n: 2, run() { if (!G.cam) return false; X.faceFlash(); Sfx.sting('static'); Sfx.whisper([0, 1.4, 0.2], 0.9, 0.5); Dr.busy = 2; } },
     { id: 'glass', n: 3, run() { Sfx.sting('glass', [rnd(-5, 5), 1.4, -rnd(8, 14)]); X.sub('(cristales rotos)', 2.5); Dr.busy = 2; } },
-    { id: 'statue', n: 3, run() { const i = Math.floor(rnd(0, decoys.length)), d = decoys[i]; d.home = d.home || d.char.group.position.clone(); d.homeRy = d.homeRy ?? d.char.group.rotation.y; W.L.lamp.intensity = 0.2; Sfx.creak(d.char.group.position.toArray()); Sfx.sting('low'); d.char.group.position.x += rnd(-1.2, 1.2) * 0.6; d.char.group.position.z += rnd(0.8, 1.6); d.char.group.rotation.y = Math.atan2(P.pos.x - d.char.group.position.x, P.pos.z - d.char.group.position.z); d.home = d.char.group.position.clone(); d.homeRy = d.char.group.rotation.y; Dr.busy = 2; Dr.restore.push([0.5, () => { W.L.lamp.intensity = 2.0; }]); } },
-    { id: 'lampdie', n: 4, run() { const side = Math.random() < 0.5 ? -1 : 1; W.L.lamp.intensity = 0; Sfx.fan(false); W.fan.on = false; Sfx.powerDown(); Dr.busy = 6; const d = decoys[Math.floor(rnd(0, decoys.length))]; Dr.restore.push([3.2, () => { decoyAt(decoys.indexOf(d), side * 3.7, 0.1, side < 0 ? Math.PI / 2 : -Math.PI / 2); d.char.setEyes(1); W.L.lamp.intensity = 2.0; Sfx.fan(true); W.fan.on = true; Sfx.sting('choir', [side * 3.7, 1.4, 0]); }], [4.4, () => { decoyHome(d); }]); } },
+    { id: 'statue', n: 3, run() { const i = pickDecoyIdx(), d = decoys[i]; d.home = d.home || d.char.group.position.clone(); d.homeRy = d.homeRy ?? d.char.group.rotation.y; W.L.lamp.intensity = 0.2; Sfx.creak(d.char.group.position.toArray()); Sfx.sting('low'); d.char.group.position.x += rnd(-1.2, 1.2) * 0.6; d.char.group.position.z += rnd(0.8, 1.6); d.char.group.rotation.y = Math.atan2(P.pos.x - d.char.group.position.x, P.pos.z - d.char.group.position.z); d.home = d.char.group.position.clone(); d.homeRy = d.char.group.rotation.y; Dr.busy = 2; Dr.restore.push([0.5, () => { W.L.lamp.intensity = 2.0; }]); } },
+    { id: 'lampdie', n: 4, run() { const side = Math.random() < 0.5 ? -1 : 1; W.L.lamp.intensity = 0; Sfx.fan(false); W.fan.on = false; Sfx.powerDown(); Dr.busy = 6; const d = decoys[pickDecoyIdx()]; Dr.restore.push([3.2, () => { decoyAt(decoys.indexOf(d), side * 3.7, 0.1, side < 0 ? Math.PI / 2 : -Math.PI / 2); d.char.glow(true); d.char.setEyes(1); W.L.lamp.intensity = 2.0; Sfx.fan(true); W.fan.on = true; Sfx.sting('choir', [side * 3.7, 1.4, 0]); }], [4.4, () => { decoyHome(d); }]); } },
   ];
   function scareDirector(dt) {
     // restauraciones programadas
@@ -322,6 +323,55 @@ export function createAI(X) {
     G.lastEvent = G.t; Dr.next = rnd(...diff().scare) / (1 + (G.t / X.HOUR) * 0.04);
   }
 
+
+
+  /* ================= estatuas que caminan: solo se mueven cuando no las miras ================= */
+  const ST = { list: [] };
+  A.statues = ST;
+  const sideKeyOf = x => (x < 0 ? 'L' : 'R');
+  function restoreStatue(s) { const g = s.d.char.group; g.position.copy(s.home); g.rotation.y = s.homeRy; g.scale.set(1, 1, 1); g.visible = true; s.d.char.glow(false); s.d.char.setEyes(0); }
+  function resetStatues() {
+    ST.list.forEach(s => { restoreStatue(s); s.d.walker = false; }); ST.list = [];
+    const n = { 3: 1, 4: 2, 5: 3, 6: 4 }[Math.min(G.night, 6)] || 0; if (!n) return;
+    const pool = decoys.map((d, i) => i).sort(() => Math.random() - 0.5).slice(0, n);
+    pool.forEach(i => {
+      const d = decoys[i], g = d.char.group; d.home = d.home || g.position.clone(); d.homeRy = d.homeRy ?? g.rotation.y; d.walker = true;
+      const side = Math.abs(d.home.x) < 1 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(d.home.x);
+      ST.list.push({ d, home: d.home.clone(), homeRy: d.homeRy, side, key: side < 0 ? 'L' : 'R', state: 'walk', wp: 0, hop: rnd(8, 16), lit: 0, meltT: 0, respawn: 0, noticed: false,
+        path: [[side * 4.6, -9.6], [side * 4.6, -4.8], [side * 4.12, -0.1]] });
+    });
+  }
+  A.statuesAtDoor = () => ST.list.filter(s => s.state === 'door').length;
+  function hopStatue(s) {
+    const g = s.d.char.group, tgt = s.path[s.wp], dx = tgt[0] - g.position.x, dz = tgt[1] - g.position.z, dist = Math.hypot(dx, dz), step = Math.min(dist, rnd(1.6, 2.8));
+    if (dist < 0.25) { s.wp++; if (s.wp >= s.path.length) { arrive(s); return; } return hopStatue(s); }
+    g.position.x += dx / dist * step; g.position.z += dz / dist * step; g.position.y = 0; g.rotation.y = Math.atan2(dx, dz);
+    if (Math.random() < 0.6) Sfx.scrape([g.position.x, 0.4, g.position.z], 0.9);
+    s.d.char.glow(true); s.d.char.setEyes(Math.hypot(g.position.x, g.position.z) < 6 ? 0.9 : 0.3);
+    s.hop = rnd(3.5, 7) / (1 + 0.12 * (G.night - 3));
+  }
+  function arrive(s) {
+    const g = s.d.char.group, slot = ST.list.filter(o => o !== s && o.state === 'door' && o.side === s.side).length; g.position.set(s.side * 4.12, 0, -0.1 + (slot % 2 ? 0.55 : -0.55) * Math.ceil(slot / 2)); g.rotation.y = s.side < 0 ? Math.PI / 2 : -Math.PI / 2; s.state = 'door'; s.lit = 0; s.noticed = false;
+    s.d.char.glow(true); s.d.char.setEyes(1.1);
+  }
+  function meltStatue(s) {
+    s.state = 'melt'; s.meltT = 0; const g = s.d.char.group; Sfx.melt([g.position.x, 1, g.position.z]); X.event('melt'); X.event('statueMelt'); G.light[s.key] = G.light[s.key];
+  }
+  function updateStatues(dt) {
+    if (!ST.list.length || G.powerOut || G.t < diff().grace + 25) return;
+    for (const s of ST.list) {
+      const g = s.d.char.group, pos = new THREE.Vector3(g.position.x, 1.3, g.position.z);
+      if (s.state === 'melt') { s.meltT += dt; const k = clamp(s.meltT / 1.8, 0, 1); g.scale.y = 1 - 0.88 * k; g.scale.x = g.scale.z = 1 + 0.25 * k; if (k >= 1) { s.state = 'away'; s.respawn = rnd(35, 50); g.visible = false; g.scale.set(1, 1, 1); } continue; }
+      if (s.state === 'away') { s.respawn -= dt; if (s.respawn <= 0) { restoreStatue(s); s.state = 'walk'; s.wp = 0; s.hop = rnd(6, 12); } continue; }
+      if (s.state === 'door') {
+        if (!s.noticed && X.observed(pos)) { s.noticed = true; Sfx.sting('metal', [pos.x, 1.4, pos.z]); X.sub('(una estatua te mira desde la puerta)', 3.5); X.hint('Una estatua en tu puerta gasta energía. Ilumínala con la linterna de ese lado para derretirla.', 'statuedoor', 6); }
+        if (G.light[s.key]) { s.lit += dt; if (s.lit > 1.6) meltStatue(s); } else s.lit = Math.max(0, s.lit - dt * 0.5);
+        continue;
+      }
+      if (X.observed(pos)) { s.hop = Math.max(s.hop, 1.0); continue; }       // te ha visto: se queda quieta
+      s.hop -= dt; if (s.hop <= 0) hopStatue(s);
+    }
+  }
 
   /* ================= sonidos fantasma: de repente, sin avisar; algunos significan algo y otros no ================= */
   const PH = { next: 0, last: '' };
@@ -373,10 +423,10 @@ export function createAI(X) {
   A.phantoms = PHANTOMS; A.phantomRun = id => PHANTOMS.find(e => e.id === id).run();
 
   /* ================= API ================= */
-  A.reset = () => { PH.next = diff().grace + 18; G.warble = 0; resetCondesa(); resetPayaso(); resetNino(); resetVerdugo(); Dr.next = diff().grace + 12; Dr.busy = 0; Dr.restore.length = 0; decoys.forEach(decoyHome); W.repairDoors(); X.threat.condesa = X.threat.payaso = X.threat.nino = X.threat.verdugo = 0; };
+  A.reset = () => { resetStatues(); PH.next = diff().grace + 18; G.warble = 0; resetCondesa(); resetPayaso(); resetNino(); resetVerdugo(); Dr.next = diff().grace + 12; Dr.busy = 0; Dr.restore.length = 0; decoys.forEach(decoyHome); W.repairDoors(); X.threat.condesa = X.threat.payaso = X.threat.nino = X.threat.verdugo = 0; };
   A.update = dt => {
     if (G.powerOut) return;
-    updateCondesa(dt); updatePayaso(dt); updateNino(dt); updateVerdugo(dt); scareDirector(dt); phantomDirector(dt);
+    updateCondesa(dt); updatePayaso(dt); updateNino(dt); updateVerdugo(dt); updateStatues(dt); scareDirector(dt); phantomDirector(dt);
   };
   A.furnaceLit = () => G.furnace >= 1;
   return A;

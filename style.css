@@ -89,3 +89,13 @@ kbd { font:inherit; font-size:11px; opacity:.6; border:1px solid currentColor; p
 #cineFade { position:absolute; inset:0; background:#000; opacity:1; } #cineSkip { position:absolute; right:18px; top:12vh; font-size:12px; opacity:.45; }
 
 @media (max-width:760px) { #camMap { transform:scale(.75); transform-origin:bottom right; right:8px; bottom:8px; } #camActions { width:55vw; left:8px; } .arch { flex-direction:column; height:60vh; } #archList { width:100%; flex-direction:row; flex-wrap:wrap; } }
+
+/* Logros */
+#achList { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; width:min(900px,94vw); max-height:56vh; overflow:auto; text-align:left; }
+.ach { padding:10px 14px; border:1px solid #333; background:rgba(255,255,255,.03); display:flex; flex-direction:column; gap:3px; opacity:.55; }
+.ach.ok { opacity:1; border-color:var(--gold); background:rgba(217,180,106,.08); } .ach b { font-size:15px; } .ach span { font-size:12px; opacity:.8; line-height:1.4; }
+#achCount { opacity:.7; letter-spacing:3px; }
+#toast { position:fixed; top:18px; left:50%; transform:translate(-50%,-140%); z-index:95; display:flex; flex-direction:column; gap:2px; padding:12px 22px; min-width:300px; max-width:90vw; background:rgba(12,10,8,.94); border:1px solid var(--gold); box-shadow:0 0 30px rgba(217,180,106,.25); text-align:center; pointer-events:none; }
+#toast small { color:var(--gold); letter-spacing:3px; font-size:11px; } #toast b { font-size:19px; } #toast span { font-size:12px; opacity:.75; }
+#toast.in { transform:translate(-50%,0); transition:transform .45s cubic-bezier(.2,1.2,.4,1); } #toast.out { transform:translate(-50%,-140%); transition:transform .45s ease-in; }
+@media (max-width:760px) { #achList { grid-template-columns:1fr; } }

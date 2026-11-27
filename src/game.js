@@ -4,7 +4,7 @@ import { loadAll, Char, IDS } from './models.js';
 import { buildWorld } from './world.js';
 import { createAI } from './ai.js';
 import { createCine } from './cinematics.js';
-import { NIGHTS, NOTES, CALLS, HINTS, NAMES, MEMORIES, ENDINGS } from './story.js';
+import { NIGHTS, NOTES, CALLS, HINTS, NAMES, MEMORIES, ENDINGS, ACH } from './story.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -18,8 +18,8 @@ let LOCKFAIL = false;                           // el navegador (p. ej. dentro d
 /* ================= ajustes y guardado ================= */
 const DEFAULTS = { vol: 0.8, sens: 1, bright: 1, subs: true, hints: true };
 const SAVE_KEY = 'museo_cera_v1';
-let SAVE = { night: 1, notes: [false, false, false, false, false], endings: {}, seenIntro: false, opts: { ...DEFAULTS } };
-try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { SAVE = Object.assign(SAVE, s); SAVE.opts = Object.assign({}, DEFAULTS, s.opts); } } catch (e) { }
+let SAVE = { night: 1, notes: [false, false, false, false, false], endings: {}, seenIntro: false, ach: {}, stats: { found: 0, melts: 0, hides: 0 }, deaths: {}, opts: { ...DEFAULTS } };
+try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { SAVE = Object.assign(SAVE, s); SAVE.opts = Object.assign({}, DEFAULTS, s.opts); SAVE.ach = SAVE.ach || {}; SAVE.stats = Object.assign({ found: 0, melts: 0, hides: 0 }, SAVE.stats); SAVE.deaths = SAVE.deaths || {}; } } catch (e) { }
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) { } };
 const O = SAVE.opts;
 const notesFound = () => SAVE.notes.filter(Boolean).length;
@@ -72,6 +72,7 @@ const G = {
   boxCharge: 1, boxOn: true, winding: false,
   hidden: false, breath: 1, holding: false,
   furnace: 0, furnaceLit: false, furnaceHeld: false,
+  stats: { camT: 0, lights: 0, doors: 0, boxMin: 1, clownRuns: 0 },
   phoneRinging: false, ghostCall: false, callOn: false, scare: null, shake: 0, danger: 0, notesThisRun: 0, lastEvent: 0, lockerOpen: false,
 };
 const P = { pos: new THREE.Vector3(0, 0, 1.7), yaw: 0, pitch: 0, eye: 1.62, bob: 0, vel: new THREE.Vector3() };
@@ -136,8 +137,25 @@ function applyBright() { $('gl').style.filter = `brightness(${1 + (O.bright - 1)
 /* ================= entorno compartido con la IA ================= */
 const eyePos = () => camera.position.clone();
 const forward = () => { const v = new THREE.Vector3(); camera.getWorldDirection(v); return v; };
+const _v = new THREE.Vector3();
+function observed(pos) {                                    // ¿está el jugador viendo este punto? (cámara abierta o la puerta de la garita)
+  if (G.cam) { const c = W.CAMS[G.camIdx]; if (c.audioOnly) return false; _v.copy(pos).project(viewCam); return _v.z < 1 && Math.abs(_v.x) < 0.98 && Math.abs(_v.y) < 0.98; }
+  if (G.hidden || G.state !== 'play') return false;
+  if (Math.abs(pos.x) < 3.3 || Math.abs(pos.z) > 1.2) return false;        // fuera de la garita solo se ve a través de las puertas
+  const side = pos.x < 0 ? 'L' : 'R'; if (W.doorClosed[side] && !W.doorBroken[side]) return false;
+  const d = _v.set(pos.x - camera.position.x, 0, pos.z - camera.position.z).normalize(), f = forward(); f.y = 0; f.normalize();
+  return f.dot(d) > 0.72;
+}
+function gameEvent(n) {
+  const st = SAVE.stats;
+  if (n === 'found') { st.found++; if (st.found >= 5) unlock('find5'); }
+  else if (n === 'melt') { st.melts++; if (st.melts >= 5) unlock('melt'); }
+  else if (n === 'statueMelt') unlock('statue');
+  else if (n === 'verdugoPassed') { st.hides++; if (st.hides >= 3) unlock('hide'); }
+  persist();
+}
 const X = {
-  G, W, P, Sfx, actors, decoys, HOUR, threat, hint, sub, faceFlash, eyePos, forward,
+  G, W, P, Sfx, actors, decoys, HOUR, threat, hint, sub, faceFlash, eyePos, forward, observed, event: gameEvent, get stats() { return G.stats; },
   shake: v => { G.shake = Math.max(G.shake, v); },
   setDanger: v => { G.danger = v; },
   jumpscare: id => jumpscare(id),
@@ -261,11 +279,11 @@ function updateHold(dt) {
 function toggleDoor(side) {
   const p = [side === 'L' ? -2.9 : 2.9, 1.5, 1.4];
   if (W.doorBroken[side]) { Sfx.buzzer(); sub('(la puerta está destrozada)', 2); return; }
-  W.doorClosed[side] = !W.doorClosed[side]; Sfx.door(p, W.doorClosed[side]); updatePanels();
+  W.doorClosed[side] = !W.doorClosed[side]; if (W.doorClosed[side]) G.stats.doors++; Sfx.door(p, W.doorClosed[side]); updatePanels();
 }
 function toggleLight(side) {
   const p = [side === 'L' ? -2.9 : 2.9, 1.2, 1.4], o = side === 'L' ? 'R' : 'L';
-  G.light[side] = !G.light[side]; if (G.light[side]) G.light[o] = false; Sfx.flash(G.light[side], p); updatePanels(); updateLightsFx();
+  G.light[side] = !G.light[side]; if (G.light[side]) { G.light[o] = false; G.stats.lights++; } Sfx.flash(G.light[side], p); updatePanels(); updateLightsFx();
   if (G.light[side]) { const who = whoAtDoor(side); if (who) { Sfx.sting('metal', p); } }
 }
 function whoAtDoor(side) { const x = side === 'L' ? -4.1 : 4.1; return Object.values(actors).find(a => a.char.group.visible && Math.abs(a.char.group.position.x - x) < 0.6 && Math.abs(a.char.group.position.z) < 0.7); }
@@ -288,7 +306,7 @@ function toggleLocker() {
   }
 }
 function pickNote(i) {
-  if (SAVE.notes[i]) return; SAVE.notes[i] = true; persist(); W.showNote(i, false); Sfx.pick(); G.notesThisRun++; openNote(i);
+  if (SAVE.notes[i]) return; SAVE.notes[i] = true; persist(); if (notesFound() >= 3) unlock('notes3'); if (notesFound() >= 5) unlock('notes5'); W.showNote(i, false); Sfx.pick(); G.notesThisRun++; openNote(i);
 }
 function openNote(i) {
   G.modal = true; unlockPointer(); const n = NOTES[i];
@@ -365,7 +383,7 @@ function endCall(user) { G.callOn = false; clearTimeout(callTimer); Sfx.shutUp()
 $('muteCall').onclick = () => endCall(true);
 
 /* ================= HUD ================= */
-function usageNow() { return 1 + (W.doorClosed.L ? 1 : 0) + (W.doorClosed.R ? 1 : 0) + (G.light.L || G.light.R ? 1 : 0) + (G.cam ? 1 : 0); }
+function usageNow() { return 1 + (W.doorClosed.L ? 1 : 0) + (W.doorClosed.R ? 1 : 0) + (G.light.L || G.light.R ? 1 : 0) + (G.cam ? 1 : 0) + (AI ? AI.statuesAtDoor() : 0); }
 const cache = {};
 const setT = (id, v) => { if (cache[id] !== v) { cache[id] = v; $(id).textContent = v; } };
 function updateHud() {
@@ -378,9 +396,35 @@ function updateHud() {
   if (G.cam) { $('lockFill').style.width = Math.round(AI.payaso.lock * 100) + '%'; $('lockFill').classList.toggle('low', AI.payaso.lock < 0.35); $('furnFill').style.width = Math.round(G.furnace * 100) + '%'; $('btnFind').classList.toggle('hidden', !(G.night >= 2 && AI.nino.phase === 'count')); }
 }
 
+/* ================= logros ================= */
+let toastQ = [], toastBusy = false;
+function unlock(id) {
+  if (SAVE.ach[id]) return; SAVE.ach[id] = Date.now(); persist();
+  const a = ACH.find(x => x.id === id); if (!a) return; toastQ.push(a); if (!toastBusy) nextToast();
+}
+function nextToast() {
+  const a = toastQ.shift(); if (!a) { toastBusy = false; return; } toastBusy = true;
+  $('toastT').textContent = a.t; $('toastD').textContent = a.d; const e = $('toast'); show('toast'); e.classList.remove('out'); void e.offsetWidth; e.classList.add('in');
+  Sfx.uiOk(); setTimeout(() => { e.classList.remove('in'); e.classList.add('out'); setTimeout(() => { hide('toast'); nextToast(); }, 500); }, 4200);
+}
+function nightAchievements() {
+  const n = G.night, st = G.stats;
+  if (n === 1) unlock('n1'); if (n >= 3 && n <= 5) unlock('n3'); if (n === 5) unlock('n5'); if (n === 6) unlock('n6');
+  if (n >= 2) { if (st.camT < 15) unlock('dark'); if (st.lights === 0) unlock('nolight'); if (st.doors === 0) unlock('nodoor'); if (st.boxMin >= 0.25) unlock('wind'); if (st.clownRuns === 0) unlock('lock'); }
+  if (n >= 3 && G.power > 40) unlock('saver');
+}
+function renderAch() {
+  const l = $('achList'); l.innerHTML = ''; let c = 0;
+  ACH.forEach(a => { const ok = !!SAVE.ach[a.id]; if (ok) c++; const d = document.createElement('div'); d.className = 'ach' + (ok ? ' ok' : '');
+    d.innerHTML = `<b>${ok ? '✔ ' : '▫ '}${(a.secret && !ok) ? '???' : a.t}</b><span>${(a.secret && !ok) ? 'Un final que solo ve quien lo merece.' : a.d}</span>`; l.appendChild(d); });
+  $('achCount').textContent = `${c} / ${ACH.length}`;
+}
+$('btnAch').onclick = () => { Sfx.init(); Sfx.ui(); hide('menu'); renderAch(); show('achievements'); };
+$('btnAchBack').onclick = () => { Sfx.uiBack(); hide('achievements'); show('menu'); };
+
 /* ================= flujo de noche ================= */
 function resetNight() {
-  Object.assign(G, { t: 0, power: 100, light: { L: false, R: false }, cam: false, camIdx: 0, powerOut: false, outT: 0, outStage: 0, boxCharge: 1, winding: false, hidden: false, breath: 1, holding: false, furnace: 0, furnaceLit: false, furnaceHeld: false, phoneRinging: false, ghostCall: false, callOn: false, scare: null, shake: 0, danger: 0, notesThisRun: 0, modal: false, lastEvent: 0 });
+  Object.assign(G, { stats: { camT: 0, lights: 0, doors: 0, boxMin: 1, clownRuns: 0 }, t: 0, power: 100, light: { L: false, R: false }, cam: false, camIdx: 0, powerOut: false, outT: 0, outStage: 0, boxCharge: 1, winding: false, hidden: false, breath: 1, holding: false, furnace: 0, furnaceLit: false, furnaceHeld: false, phoneRinging: false, ghostCall: false, callOn: false, scare: null, shake: 0, danger: 0, notesThisRun: 0, modal: false, lastEvent: 0 });
   W.doorClosed.L = W.doorClosed.R = false; W.doorAnim.L = W.doorAnim.R = 0;
   P.pos.set(0, 0, 1.7); P.yaw = 0; P.pitch = 0; P.vel.set(0, 0, 0);
   const dmg = G.night >= 4;
@@ -400,7 +444,7 @@ async function startNight(n) {
     if (n <= 5) setTimeout(() => { if (G.state === 'play') ringPhone(); }, 3500);
   }, 3200);
 }
-function hideScreens() { ['menu', 'nightCard', 'gameOver', 'win', 'choice', 'ending', 'options', 'archive', 'pause', 'noteReader', 'resume', 'credits'].forEach(hide); }
+function hideScreens() { ['menu', 'nightCard', 'gameOver', 'win', 'choice', 'ending', 'options', 'archive', 'pause', 'noteReader', 'resume', 'credits', 'achievements'].forEach(hide); }
 
 /* ================= apagón ================= */
 function triggerPowerOut() {
@@ -429,6 +473,7 @@ const shortest = d => Math.atan2(Math.sin(d), Math.cos(d));
 const ease3 = t => t * t * (3 - 2 * t);
 function jumpscare(id, cause) {
   if (G.state !== 'play') return;
+  SAVE.deaths[id] = true; persist(); if (['condesa', 'verdugo', 'nino', 'payaso'].every(k => SAVE.deaths[k])) unlock('deaths');
   G.state = 'dead'; endCall(); if (G.cam) { G.cam = false; hide('monitor'); }
   G.light.L = G.light.R = false; updateLightsFx(); Sfx.stopAmbient(); Sfx.heart(0); Sfx.staticLoop(0);
   hide('lockerOverlay'); hide('hud'); hide('prompt'); hide('hintLine'); hide('subs'); hide('dangerVig'); hide('breath'); hide('holdBar'); hide('muteCall');
@@ -498,7 +543,7 @@ function updateScare(dt) {
 /* ================= final de noche ================= */
 function winNight() {
   G.state = 'win'; endCall(); Sfx.stopAmbient(); Sfx.heart(0); if (G.cam) { G.cam = false; hide('monitor'); } if (G.hidden) hide('lockerOverlay'); hide('hud'); hide('prompt'); hide('hintLine'); hide('subs'); hide('dangerVig'); hide('holdBar'); unlockPointer();
-  Sfx.chime6(); $('winMsg').textContent = G.night >= 5 ? '¡Has sobrevivido a la última noche!' : `Has sobrevivido a la noche ${G.night}.`; hide('btnNext'); show('win');
+  nightAchievements(); Sfx.chime6(); $('winMsg').textContent = G.night >= 5 ? '¡Has sobrevivido a la última noche!' : `Has sobrevivido a la noche ${G.night}.`; hide('btnNext'); show('win');
   if (G.night < 5) SAVE.night = Math.max(SAVE.night, G.night + 1); else SAVE.night = 5; persist();
   setTimeout(() => { show('btnNext'); $('btnNext').textContent = 'CONTINUAR  [Enter]'; }, 2600);
 }
@@ -517,7 +562,7 @@ function finalChoice() {
   $('btnStay').classList.toggle('hidden', !canStay); show('choice');
 }
 async function playEnding(kind) {
-  hide('choice'); G.state = 'cine'; SAVE.endings[kind] = true; if (kind === 'free' || kind === 'leave' || kind === 'curator') SAVE.extra = true; persist();
+  hide('choice'); G.state = 'cine'; SAVE.endings[kind] = true; if (kind === 'free') unlock('free'); if (['leave', 'curator', 'free'].every(k => SAVE.endings[k])) unlock('endAll'); if (kind === 'free' || kind === 'leave' || kind === 'curator') SAVE.extra = true; persist();
   await Cine.play('ending_' + kind);
   const e = ENDINGS[kind]; $('endTitle').textContent = e.title; $('endLines').textContent = e.lines.join('\n'); G.state = 'end'; show('ending');
 }
@@ -527,7 +572,8 @@ function menuKey(e) {
   if (!isHidden('options')) { if (e.code === 'Escape') $('btnOptBack').click(); return; }
   if (!isHidden('archive')) { if (e.code === 'Escape') $('btnArchBack').click(); return; }
   if (!isHidden('credits')) { hide('credits'); show('menu'); return; }
-  const k = e.code; if (k === 'KeyN') $('btnNew').click(); else if (k === 'KeyC' && !isHidden('btnCont')) $('btnCont').click(); else if (k === 'KeyA') $('btnArchive').click(); else if (k === 'KeyO') $('btnOptions').click(); else if (k === 'KeyX' && !$('btnExtra').classList.contains('hidden')) $('btnExtra').click();
+  if (!isHidden('achievements')) { if (e.code === 'Escape') $('btnAchBack').click(); return; }
+  const k = e.code; if (k === 'KeyN') $('btnNew').click(); else if (k === 'KeyC' && !isHidden('btnCont')) $('btnCont').click(); else if (k === 'KeyA') $('btnArchive').click(); else if (k === 'KeyL') $('btnAch').click(); else if (k === 'KeyO') $('btnOptions').click(); else if (k === 'KeyX' && !$('btnExtra').classList.contains('hidden')) $('btnExtra').click();
 }
 function goMenu() {
   G.state = 'menu'; G.paused = false; G.modal = false; hideScreens(); hide('hud'); hide('monitor'); hide('lockerOverlay'); unlockPointer(); Sfx.stopAmbient(); endCall(); Cine && Cine.stop();
@@ -573,7 +619,7 @@ let time = 0, noiseT = 0, ambT = 0, heartRate = 0;
 function tick(dt) {
   const live = G.state === 'play' && !G.paused && !G.modal;
   if (live) {
-    G.t += dt;
+    G.t += dt; if (G.cam) G.stats.camT += dt; G.stats.boxMin = Math.min(G.stats.boxMin, G.boxCharge);
     const h = Math.floor(G.t / HOUR);
     if (!G.powerOut) {
       G.power -= 0.1 * usageNow() * AI.diff().power * (60 / HOUR) * dt;
@@ -653,7 +699,7 @@ async function boot() {
   setupCharacters();
   AI = createAI(X);
   Cine = createCine({ THREE, scene, camera, W, actors, decoys, Sfx, G, show, hide, $, screenFlash, resetNight, SAVE, notesFound, ENDINGS, O });
-  window.__g = DEBUG ? { sim: (sec, dt = 0.05) => { for (let t = 0; t < sec; t += dt) { time += dt; tick(dt); W.update(dt, time, { boxCharge: G.boxCharge, boxOn: G.boxOn && !G.powerOut, winding: G.winding, lockerOpen: G.hidden || G.lockerOpen, furnace: G.furnace }); } }, G, P, W, actors, decoys, AI, X, Cine, camera, scene, Sfx, SAVE, startNight, jumpscare, triggerPowerOut, selectCam, enterCams, exitCams, toggleLocker, toggleDoor, toggleLight, winNight, playEnding, goMenu, THREE, renderer, pickNote } : undefined;
+  window.__g = DEBUG ? { unlock, ACH, sim: (sec, dt = 0.05) => { for (let t = 0; t < sec; t += dt) { time += dt; tick(dt); W.update(dt, time, { boxCharge: G.boxCharge, boxOn: G.boxOn && !G.powerOut, winding: G.winding, lockerOpen: G.hidden || G.lockerOpen, furnace: G.furnace }); } }, G, P, W, actors, decoys, AI, X, Cine, camera, scene, Sfx, SAVE, startNight, jumpscare, triggerPowerOut, selectCam, enterCams, exitCams, toggleLocker, toggleDoor, toggleLight, winNight, playEnding, goMenu, THREE, renderer, pickNote } : undefined;
   hide('loading'); goMenu(); frame();
 }
 boot();

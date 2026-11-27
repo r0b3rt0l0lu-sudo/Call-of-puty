@@ -76,3 +76,25 @@ export const CREDITS = [
   'Música y sonido', 'Sintetizados en tiempo real con WebAudio', '',
   'Gracias por jugar.',
 ];
+
+export const ACH = [
+  { id: 'n1', t: 'Primera noche', d: 'Sobrevive a la noche 1.' },
+  { id: 'n3', t: 'Ya no tiembla el pulso', d: 'Sobrevive a la noche 3.' },
+  { id: 'n5', t: 'Hasta el amanecer', d: 'Sobrevive a la noche 5.' },
+  { id: 'n6', t: 'Pesadilla superada', d: 'Sobrevive a la noche extra.' },
+  { id: 'dark', t: 'A oscuras', d: 'Supera una noche (2 o más) usando las cámaras menos de 15 segundos en total.' },
+  { id: 'nolight', t: 'Sin linterna', d: 'Supera una noche (2 o más) sin encender ninguna linterna.' },
+  { id: 'nodoor', t: 'Puertas abiertas', d: 'Supera una noche (2 o más) sin cerrar ninguna puerta.' },
+  { id: 'wind', t: 'Cuerda perfecta', d: 'Supera una noche (2 o más) sin dejar que la caja baje del 25 %.' },
+  { id: 'lock', t: 'Cerrojo de hierro', d: 'Supera una noche (2 o más) sin que el Payaso salga de su vitrina.' },
+  { id: 'saver', t: 'Ahorrador', d: 'Termina una noche (3 o más) con más del 40 % de energía.' },
+  { id: 'find5', t: '¡Te encontré!', d: 'Encuentra al Niño 5 veces.' },
+  { id: 'hide', t: 'Ni un suspiro', d: 'Que el Verdugo registre la garita 3 veces sin encontrarte.' },
+  { id: 'melt', t: 'Cera derretida', d: 'Derrite 5 figuras con la linterna.' },
+  { id: 'statue', t: 'Estatua incómoda', d: 'Derrite una estatua que caminaba hacia tu puerta.' },
+  { id: 'notes3', t: 'Detective', d: 'Encuentra 3 notas.' },
+  { id: 'notes5', t: 'Archivista', d: 'Encuentra las 5 notas.' },
+  { id: 'deaths', t: 'Los he visto a todos', d: 'Que te atrape cada una de las cuatro figuras.' },
+  { id: 'endAll', t: 'Todos los finales', d: 'Mira los tres finales.' },
+  { id: 'free', t: 'Libres', d: 'Consigue el final verdadero.', secret: true },
+];
